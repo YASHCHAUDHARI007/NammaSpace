@@ -1,0 +1,146 @@
+:root {
+  /* Core Palette — Architectural Spatial Computing */
+  --color-ivory: #f6f4ef;
+  --color-ivory-muted: #eae6dd;
+  --color-ivory-subtle: rgba(246, 244, 239, 0.76);
+  --color-ivory-dim: rgba(246, 244, 239, 0.52);
+
+  --color-forest-deep: #0f1f17;
+  --color-forest: #14281d;
+  --color-forest-mid: #1d3829;
+  --color-forest-elevated: #244432;
+
+  --color-sage: #8fa696;
+  --color-sage-bright: #a8c2b0;
+  --color-sage-muted: #5e7466;
+  --color-sage-tint: rgba(143, 166, 150, 0.16);
+
+  --color-charcoal: #161817;
+  --color-charcoal-soft: #222624;
+
+  /* Status & Telemetry Accents */
+  --color-emerald: #48b878;
+  --color-amber: #d99b4e;
+  --color-coral: #d96552;
+
+  /* Glass Surfaces */
+  --glass-dark-bg: rgba(18, 28, 22, 0.76);
+  --glass-dark-heavy: rgba(15, 24, 19, 0.88);
+  --glass-light-bg: rgba(246, 244, 239, 0.88);
+  --glass-border: rgba(246, 244, 239, 0.13);
+  --glass-border-strong: rgba(143, 166, 150, 0.34);
+  --glass-border-dark: rgba(20, 40, 29, 0.12);
+
+  /* Shadows */
+  --shadow-ambient: 0 18px 48px -12px rgba(8, 14, 11, 0.46), 0 4px 14px -2px rgba(8, 14, 11, 0.25);
+  --shadow-subtle: 0 8px 24px -6px rgba(8, 14, 11, 0.32);
+  --shadow-modal: 0 32px 80px -16px rgba(5, 10, 8, 0.68);
+
+  /* Typography */
+  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Radii & Transitions */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-pill: 9999px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-charcoal);
+  color: var(--color-ivory);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+.heading-font {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-sage-bright);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar for Overlays & Drawers */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(143, 166, 150, 0.28);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(143, 166, 150, 0.48);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' on, 'zero' on;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
