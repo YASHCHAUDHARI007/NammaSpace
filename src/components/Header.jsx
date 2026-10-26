@@ -54,8 +54,15 @@ export default function Header({
     return () => window.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setSearchQuery('');
+    setIsSearchOpen(false);
+  }, [activeScene?.id]);
+
   let statusClass = 'status-dot';
-  let statusText = 'WebGL Active • Reconstructed';
+  let statusText = activeScene?.isReconstructed
+    ? 'WebGL Active • Reconstructed'
+    : 'WebGL Active • Asset Preview';
 
   if (isLoading) {
     statusClass = 'status-dot status-loading';
@@ -63,7 +70,7 @@ export default function Header({
   } else if (hasError) {
     statusClass = 'status-dot status-error';
     statusText = 'Asset Load Error';
-  } else if (!activeScene?.isReconstructed) {
+  } else if (activeScene?.mode === 'demo') {
     statusClass = 'status-dot status-demo';
     statusText = 'Baseline Geometry (Demo)';
   }

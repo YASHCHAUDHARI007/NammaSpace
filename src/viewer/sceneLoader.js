@@ -4,7 +4,8 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
 import {
   buildProceduralDemoRoom,
-  buildReconstructionCalibrationStage
+  buildReconstructionCalibrationStage,
+  disposeObject3D
 } from './createScene.js';
 
 /**
@@ -48,7 +49,7 @@ export async function loadSpatialScene(sceneConfig, callbacks = {}) {
       return loadGlbMeshScene(sceneConfig, onProgress);
 
     case 'splat':
-      return loadGaussianSplatScene(sceneConfig, onProgress);
+      return loadGaussianSplatScene(sceneConfig, onProgress, callbacks.signal);
 
     default:
       throw new Error(`Unsupported scene mode "${sceneConfig.mode}". Expected "demo", "glb", or "splat".`);
@@ -98,13 +99,6 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
     throw new Error('GLB scene configuration is missing `assetUrl`. Place your .glb file in public/models/.');
   }
 
-  const rootGroup = new THREE.Group();
-  rootGroup.name = `GLBScene_${sceneConfig.id}`;
-
-  // Add subtle metric calibration floor grid under reconstructed mesh
-  const calibrationStage = buildReconstructionCalibrationStage(sceneConfig.roomBounds);
-  rootGroup.add(calibrationStage);
-
   const gltf = await new Promise((resolve, reject) => {
     gltfLoader.load(
       sceneConfig.assetUrl,
@@ -140,6 +134,10 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
     throw new Error(`GLB asset "${sceneConfig.assetUrl}" contains no valid Three.js scene graph.`);
   }
 
+  const rootGroup = new THREE.Group();
+  rootGroup.name = `GLBScene_${sceneConfig.id}`;
+  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+
   let vertexCount = 0;
   let triangleCount = 0;
   const extractedColliders = [];
@@ -159,28 +157,6 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
         }
       }
 
-      // If the scene config has no explicit colliders, extract obstacle AABBs from named furniture meshes
-      if (
-        (!sceneConfig.colliders || sceneConfig.colliders.length === 0) &&
-        child.userData?.collidable !== false
-      ) {
-        const box = new THREE.Box3().setFromObject(child);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        // Filter out floor/ceiling slabs and tiny decorative props
-        if (size.y > 0.28 && size.x < 6.5 && size.z < 6.5 && box.min.y < 1.2) {
-          extractedColliders.push({
-            id: child.name || `mesh-obstacle-${extractedColliders.length + 1}`,
-            label: child.name || 'Reconstructed Mesh Obstacle',
-            minX: box.min.x,
-            maxX: box.max.x,
-            minY: Math.max(0, box.min.y),
-            maxY: box.max.y,
-            minZ: box.min.z,
-            maxZ: box.max.z
-          });
-        }
-      }
     }
   });
 
@@ -191,7 +167,7 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
     extractedColliders,
     stats: {
       mode: 'glb',
-      isReconstructed: true,
+      isReconstructed: sceneConfig.isReconstructed === true,
       vertexCount: Math.round(vertexCount),
       triangleCount: Math.round(triangleCount),
       splatCount: null,
@@ -202,185 +178,139 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
 }
 
 /**
- * Mode 3: 3D Gaussian Splat (.splat) Loader.
- *
- * Parses standard 32-byte binary `.splat` records (positions, anisotropic scales,
- * RGBA colors, and orientation quaternions) with real streaming byte progress,
- * and builds a soft radial Gaussian Splat shader cloud inside the Three.js scene,
- * while registering `@mkkellogg/gaussian-splats-3d` metadata and proxy collision geometry.
+ * Standard antimatter15 .splat: 32-byte little-endian records containing
+ * float32 position (xyz), float32 scale (xyz), uint8 RGBA, and uint8
+ * quaternion (wxyz). The installed GaussianSplats3D parser owns decoding,
+ * covariance projection, alpha blending, and depth sorting.
  */
-async function loadGaussianSplatScene(sceneConfig, onProgress) {
-  if (!sceneConfig.assetUrl) {
-    throw new Error('Gaussian Splat scene configuration is missing `assetUrl`. Place your .splat file in public/scenes/.');
+export function validateSplatBuffer(buffer) {
+  if (!buffer.byteLength || buffer.byteLength % 32 !== 0) {
+    throw new Error('Invalid .splat file: size must be a nonzero multiple of 32 bytes (xyz, scale, RGBA, quaternion).');
   }
+  const view = new DataView(buffer);
+  for (let offset = 0; offset < buffer.byteLength; offset += 32) {
+    for (let field = 0; field < 6; field++) {
+      const value = view.getFloat32(offset + field * 4, true);
+      if (!Number.isFinite(value) || (field >= 3 && value <= 0)) {
+        throw new Error(`Invalid .splat record ${offset / 32 + 1}: position must be finite and scales must be positive.`);
+      }
+    }
+    if (view.getUint8(offset + 28) === 128 && view.getUint8(offset + 29) === 128 &&
+        view.getUint8(offset + 30) === 128 && view.getUint8(offset + 31) === 128) {
+      throw new Error(`Invalid .splat record ${offset / 32 + 1}: zero-length quaternion.`);
+    }
+  }
+  return buffer.byteLength / 32;
+}
 
-  const response = await fetch(sceneConfig.assetUrl);
+async function fetchSplatBuffer(url, onProgress, signal) {
+  let response;
+  try {
+    response = await fetch(url, { signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new Error(`Could not request .splat asset "${url}": ${error.message}`);
+  }
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch Gaussian Splat asset "${sceneConfig.assetUrl}" (HTTP ${response.status}). Place a valid .splat file in public/scenes/.`
-    );
+    throw new Error(`Could not load .splat asset "${url}" (HTTP ${response.status}). Check the asset path and server response.`);
   }
-
-  const contentLength = Number(response.headers.get('content-length')) || 0;
-  let arrayBuffer;
-
-  if (response.body && typeof response.body.getReader === 'function') {
+  const headerLength = Number(response.headers.get('content-length'));
+  const totalBytes = Number.isFinite(headerLength) && headerLength > 0 ? headerLength : null;
+  const chunks = [];
+  let loadedBytes = 0;
+  if (response.body?.getReader) {
     const reader = response.body.getReader();
-    const chunks = [];
-    let receivedLength = 0;
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       chunks.push(value);
-      receivedLength += value.length;
-
-      if (contentLength > 0) {
-        onProgress({
-          loadedBytes: receivedLength,
-          totalBytes: contentLength,
-          percent: Math.min(100, Math.round((receivedLength / contentLength) * 100))
-        });
-      } else {
-        onProgress({
-          loadedBytes: receivedLength,
-          totalBytes: null,
-          percent: null
-        });
-      }
+      loadedBytes += value.byteLength;
+      onProgress({ loadedBytes, totalBytes, percent: totalBytes ? Math.min(100, Math.round(loadedBytes / totalBytes * 100)) : null });
     }
-
-    const combined = new Uint8Array(receivedLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      combined.set(chunk, offset);
-      offset += chunk.length;
-    }
-    arrayBuffer = combined.buffer;
   } else {
-    arrayBuffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    chunks.push(bytes);
+    loadedBytes = bytes.byteLength;
+    onProgress({ loadedBytes, totalBytes, percent: totalBytes ? 100 : null });
   }
-
-  const BYTES_PER_SPLAT = 32;
-  const splatCount = Math.floor(arrayBuffer.byteLength / BYTES_PER_SPLAT);
-
-  if (splatCount <= 0) {
-    throw new Error(
-      `The file at "${sceneConfig.assetUrl}" is empty or smaller than a single 32-byte Gaussian splat record.`
-    );
+  if (totalBytes !== null && totalBytes !== loadedBytes) {
+    throw new Error(`Incomplete .splat download from "${url}": received ${loadedBytes} of ${totalBytes} bytes.`);
   }
-
-  const rootGroup = new THREE.Group();
-  rootGroup.name = `GaussianSplatScene_${sceneConfig.id}`;
-
-  // Always include the proxy calibration stage because Gaussian Splats lack triangle collision meshes
-  const calibrationStage = buildReconstructionCalibrationStage(sceneConfig.roomBounds);
-  rootGroup.add(calibrationStage);
-
-  const splatCloud = buildGaussianSplatPointMesh(arrayBuffer, splatCount);
-  rootGroup.add(splatCloud);
-
-  // Store compatibility reference to @mkkellogg/gaussian-splats-3d viewer API on userData
-  rootGroup.userData.gaussianSplats3DVersion = Boolean(GaussianSplats3D?.DropInViewer)
-    ? '@mkkellogg/gaussian-splats-3d (compatible)'
-    : 'native-three-splat-kernel';
-
-  return {
-    rootGroup,
-    extractedColliders: [],
-    stats: {
-      mode: 'splat',
-      isReconstructed: true,
-      vertexCount: null,
-      triangleCount: null,
-      splatCount,
-      collisionCount: sceneConfig.colliders?.length || 0,
-      provenanceNote: `Loaded ${splatCount.toLocaleString()} 3D Gaussian splats + proxy collision bounds`
-    }
-  };
+  const bytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes.buffer;
 }
 
-/**
- * Decodes standard 32-byte `.splat` binary buffer:
- * - Bytes 0..11  : Float32 x, y, z position
- * - Bytes 12..23 : Float32 sx, sy, sz scale
- * - Bytes 24..27 : Uint8 r, g, b, a color/opacity
- * - Bytes 28..31 : Uint8 qx, qy, qz, qw quaternion rotation
- * And renders soft, depth-sorted radial Gaussian splat kernels via custom ShaderMaterial.
- */
-function buildGaussianSplatPointMesh(arrayBuffer, splatCount) {
-  const f32 = new Float32Array(arrayBuffer);
-  const u8 = new Uint8Array(arrayBuffer);
-
-  const positions = new Float32Array(splatCount * 3);
-  const colors = new Float32Array(splatCount * 4);
-  const sizes = new Float32Array(splatCount);
-
-  for (let i = 0; i < splatCount; i++) {
-    const floatBase = i * 8; // 32 bytes = 8 float32s
-    const byteBase = i * 32;
-
-    const px = f32[floatBase + 0];
-    const py = f32[floatBase + 1];
-    const pz = f32[floatBase + 2];
-
-    const sx = Math.abs(f32[floatBase + 3]);
-    const sy = Math.abs(f32[floatBase + 4]);
-    const sz = Math.abs(f32[floatBase + 5]);
-
-    const r = u8[byteBase + 24] / 255;
-    const g = u8[byteBase + 25] / 255;
-    const b = u8[byteBase + 26] / 255;
-    const a = u8[byteBase + 27] / 255;
-
-    positions[i * 3 + 0] = Number.isFinite(px) ? px : 0;
-    positions[i * 3 + 1] = Number.isFinite(py) ? py : 0;
-    positions[i * 3 + 2] = Number.isFinite(pz) ? pz : 0;
-
-    colors[i * 4 + 0] = r;
-    colors[i * 4 + 1] = g;
-    colors[i * 4 + 2] = b;
-    colors[i * 4 + 3] = Math.max(0.15, a);
-
-    const meanScale = (sx + sy + sz) / 3;
-    sizes[i] = Math.max(0.035, Math.min(0.42, Number.isFinite(meanScale) ? meanScale * 2.4 : 0.12));
+async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
+  if (!sceneConfig.assetUrl) {
+    throw new Error('Splat scene configuration is missing assetUrl. Add a standard .splat file to public/scenes/.');
   }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
-  geometry.setAttribute('splatSize', new THREE.BufferAttribute(sizes, 1));
-
-  const material = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.NormalBlending,
-    vertexShader: `
-      attribute vec4 color;
-      attribute float splatSize;
-      varying vec4 vColor;
-      void main() {
-        vColor = color;
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        float dist = max(0.25, -mvPosition.z);
-        gl_PointSize = clamp((splatSize * 540.0) / dist, 3.0, 96.0);
-        gl_Position = projectionMatrix * mvPosition;
-      }
-    `,
-    fragmentShader: `
-      varying vec4 vColor;
-      void main() {
-        vec2 coord = (gl_PointCoord - vec2(0.5)) * 2.0;
-        float r2 = dot(coord, coord);
-        if (r2 > 1.0) discard;
-        // True Gaussian radial falloff exp(-2.5 * r^2)
-        float gaussian = exp(-2.6 * r2);
-        gl_FragColor = vec4(vColor.rgb, vColor.a * gaussian);
-      }
-    `
+  const buffer = await fetchSplatBuffer(sceneConfig.assetUrl, onProgress, signal);
+  if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+  const splatCount = validateSplatBuffer(buffer);
+  const rootGroup = new THREE.Group();
+  rootGroup.name = `GaussianSplatScene_${sceneConfig.id}`;
+  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+  const viewer = new GaussianSplats3D.DropInViewer({
+    gpuAcceleratedSort: false,
+    sharedMemoryForWorkers: false
   });
+  let blobUrl;
+  try {
+    blobUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
+    const load = viewer.addSplatScene(blobUrl, {
+      format: GaussianSplats3D.SceneFormat.Splat,
+      showLoadingUI: false,
+      progressiveLoad: false,
+      splatAlphaRemovalThreshold: 1
+    });
+    const abortLoad = () => load.abort('Scene replaced');
+    signal?.addEventListener('abort', abortLoad, { once: true });
+    try {
+      await load.promise;
+    } finally {
+      signal?.removeEventListener('abort', abortLoad);
+    }
+    if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+    rootGroup.add(viewer);
+    return {
+      rootGroup,
+      extractedColliders: [],
+      stats: {
+        mode: 'splat',
+        isReconstructed: sceneConfig.isReconstructed === true,
+        vertexCount: null,
+        triangleCount: null,
+        splatCount: viewer.splatMesh?.getSplatCount() ?? splatCount,
+        collisionCount: sceneConfig.colliders?.length || 0,
+        provenanceNote: `Loaded standard 32-byte .splat asset with explicit proxy collision bounds`
+      }
+    };
+  } catch (error) {
+    await viewer.dispose().catch(() => {});
+    disposeObject3D(rootGroup);
+    if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+    throw new Error(`Could not render .splat asset "${sceneConfig.assetUrl}": ${error.message}`);
+  } finally {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
+}
 
-  const points = new THREE.Points(geometry, material);
-  points.name = 'GaussianSplatRadianceCloud';
-  return points;
+/** Dispose Three.js resources and the splat viewer's worker, textures, and buffers. */
+export async function disposeSpatialScene(rootGroup) {
+  if (!rootGroup) return;
+  const viewers = [];
+  rootGroup.traverse((child) => {
+    if (child instanceof GaussianSplats3D.DropInViewer) viewers.push(child);
+  });
+  for (const viewer of viewers) {
+    viewer.removeFromParent();
+    await viewer.dispose().catch(() => {});
+    disposeObject3D(viewer.callbackMesh);
+  }
+  disposeObject3D(rootGroup);
 }

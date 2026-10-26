@@ -487,7 +487,11 @@ export function createRouteVisualization(pathPointsXZ = []) {
   const curvePoints = pathPointsXZ.map(([x, z]) => new THREE.Vector3(x, 0.035, z));
 
   // Build smooth piecewise path tube on the floor
-  const pathCurve = new THREE.CatmullRomCurve3(curvePoints, false, 'catmullrom', 0.15);
+  // A curved spline can bow through furniture despite a collision-free polyline.
+  const pathCurve = new THREE.CurvePath();
+  for (let i = 1; i < curvePoints.length; i++) {
+    pathCurve.add(new THREE.LineCurve3(curvePoints[i - 1], curvePoints[i]));
+  }
   const tubeGeo = new THREE.TubeGeometry(
     pathCurve,
     Math.max(24, curvePoints.length * 10),

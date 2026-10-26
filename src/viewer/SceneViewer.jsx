@@ -14,7 +14,7 @@ import {
 } from './createScene.js';
 import { CollisionSystem } from './collision.js';
 import { FirstPersonController } from './controls.js';
-import { loadSpatialScene } from './sceneLoader.js';
+import { loadSpatialScene, disposeSpatialScene } from './sceneLoader.js';
 
 /**
  * NAMMA SPACE — 3D Viewport & Lifecycle Orchestrator
@@ -46,8 +46,14 @@ const SceneViewer = forwardRef(function SceneViewer(
   const poiInteractablesRef = useRef([]);
   const routeGroupRef = useRef(null);
   const hoveredPoiRef = useRef(null);
+  const sceneConfigRef = useRef(sceneConfig);
+  const loadedSceneIdRef = useRef(null);
+  const callbacksRef = useRef({});
+  sceneConfigRef.current = sceneConfig;
+  callbacksRef.current = { onLockChange, onLoadStart, onLoadProgress, onLoadSuccess, onLoadError, onSelectPoi, onRouteComputed, onTelemetryUpdate };
 
   const [hoveredPoi, setHoveredPoi] = useState(null);
+  const [sceneStatsVersion, setSceneStatsVersion] = useState(0);
 
   // Expose imperative actions to parent App / Controls
   useImperativeHandle(ref, () => ({
@@ -58,28 +64,29 @@ const SceneViewer = forwardRef(function SceneViewer(
       controllerRef.current?.unlock();
     },
     resetCameraView() {
-      if (!controllerRef.current || !sceneConfig) return;
-      const { position, yaw, pitch } = sceneConfig.spawn || {};
+      if (!controllerRef.current || !sceneConfigRef.current?.spawn) return;
+      const { position, yaw, pitch } = sceneConfigRef.current.spawn;
       controllerRef.current.setPose(position, yaw, pitch);
     },
     focusOnPoi(poi, shouldTeleport = false) {
       if (!controllerRef.current || !collisionRef.current || !poi) return;
       const camPos = stageRef.current?.camera?.position;
+      let route = null;
       if (camPos && poi.waypoint) {
-        const route = collisionRef.current.computeObstacleAwarePath(
+        route = collisionRef.current.computeObstacleAwarePath(
           [camPos.x, camPos.z],
           poi.waypoint
         );
         drawRoute(route?.points || []);
-        onRouteComputed?.(route ? { ...route, poi } : null);
+        callbacksRef.current.onRouteComputed?.(route ? { ...route, poi } : null);
       }
-      if (shouldTeleport && poi.waypoint && poi.lookAt) {
-        controllerRef.current.transitionToTarget(poi.waypoint, poi.lookAt, 1.0);
+      if (shouldTeleport && route?.points?.length > 1 && poi.lookAt) {
+        controllerRef.current.transitionToTarget(poi.waypoint, poi.lookAt, 1.0, route.points);
       }
     },
     clearRoute() {
       drawRoute([]);
-      onRouteComputed?.(null);
+      callbacksRef.current.onRouteComputed?.(null);
     },
     setVirtualKey(dir, active) {
       controllerRef.current?.setVirtualKey(dir, active);
@@ -119,7 +126,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       collisionSystem,
       {
         onLockChange: (locked) => {
-          onLockChange?.(locked);
+          callbacksRef.current.onLockChange?.(locked);
         }
       }
     );
@@ -135,7 +142,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       // If pointer is locked, clicking selects whatever POI is under the center reticle
       if (controller.pointerLock.isLocked) {
         if (hoveredPoiRef.current) {
-          onSelectPoi?.(hoveredPoiRef.current);
+          callbacksRef.current.onSelectPoi?.(hoveredPoiRef.current);
         }
         return;
       }
@@ -148,7 +155,7 @@ const SceneViewer = forwardRef(function SceneViewer(
 
       const hits = raycaster.intersectObjects(poiInteractablesRef.current, false);
       if (hits.length > 0 && hits[0].object?.userData?.poi) {
-        onSelectPoi?.(hits[0].object.userData.poi);
+        callbacksRef.current.onSelectPoi?.(hits[0].object.userData.poi);
       }
     };
 
@@ -156,9 +163,9 @@ const SceneViewer = forwardRef(function SceneViewer(
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (event.code === 'KeyE' && hoveredPoiRef.current) {
-        onSelectPoi?.(hoveredPoiRef.current);
+        callbacksRef.current.onSelectPoi?.(hoveredPoiRef.current);
       } else if (event.code === 'KeyR') {
-        const spawn = sceneConfig?.spawn;
+        const spawn = sceneConfigRef.current?.spawn;
         if (spawn) {
           controller.setPose(spawn.position, spawn.yaw, spawn.pitch);
         }
@@ -201,7 +208,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       // Throttled camera position telemetry update (every ~150ms)
       if (elapsed - lastTelemetryTime > 0.15) {
         lastTelemetryTime = elapsed;
-        onTelemetryUpdate?.({
+        callbacksRef.current.onTelemetryUpdate?.({
           x: stage.camera.position.x.toFixed(2),
           y: stage.camera.position.y.toFixed(2),
           z: stage.camera.position.z.toFixed(2)
@@ -219,8 +226,18 @@ const SceneViewer = forwardRef(function SceneViewer(
       window.removeEventListener('keydown', handleKeyAction);
       window.removeEventListener('resize', stage.handleResize);
       controller.dispose();
+      if (currentSceneGroupRef.current) {
+        stage.scene.remove(currentSceneGroupRef.current);
+        void disposeSpatialScene(currentSceneGroupRef.current);
+        currentSceneGroupRef.current = null;
+      }
       disposeObject3D(stage.scene);
+      stage.renderer.renderLists.dispose();
       stage.renderer.dispose();
+      stage.renderer.domElement.remove();
+      stageRef.current = null;
+      controllerRef.current = null;
+      collisionRef.current = null;
     };
   }, []);
 
@@ -232,38 +249,44 @@ const SceneViewer = forwardRef(function SceneViewer(
   // 3. Dynamically load scene when `sceneConfig` changes
   useEffect(() => {
     let cancelled = false;
+    const abortController = new AbortController();
     const stage = stageRef.current;
     const controller = controllerRef.current;
     const collision = collisionRef.current;
     if (!stage || !controller || !collision || !sceneConfig) return undefined;
 
     async function switchScene() {
-      onLoadStart?.();
+      callbacksRef.current.onLoadStart?.();
+      loadedSceneIdRef.current = null;
+      hoveredPoiRef.current = null;
+      setHoveredPoi(null);
       drawRoute([]);
-      onRouteComputed?.(null);
+      callbacksRef.current.onRouteComputed?.(null);
 
       // Dispose previous scene geometry
       if (currentSceneGroupRef.current) {
         stage.scene.remove(currentSceneGroupRef.current);
-        disposeObject3D(currentSceneGroupRef.current);
+        void disposeSpatialScene(currentSceneGroupRef.current);
         currentSceneGroupRef.current = null;
       }
 
       try {
         const result = await loadSpatialScene(sceneConfig, {
+          signal: abortController.signal,
           onProgress: (prog) => {
-            if (!cancelled) onLoadProgress?.(prog);
+            if (!cancelled) callbacksRef.current.onLoadProgress?.(prog);
           }
         });
 
         if (cancelled) {
-          disposeObject3D(result.rootGroup);
+          void disposeSpatialScene(result.rootGroup);
           return;
         }
 
         // Mount new scene root
         stage.scene.add(result.rootGroup);
         currentSceneGroupRef.current = result.rootGroup;
+        loadedSceneIdRef.current = sceneConfig.id;
 
         // Configure collision bounds + any dynamically extracted mesh AABBs
         collision.configure(sceneConfig);
@@ -291,10 +314,11 @@ const SceneViewer = forwardRef(function SceneViewer(
           debugBoundsGroupRef.current = debugVisuals;
         }
 
-        onLoadSuccess?.(result.stats);
+        setSceneStatsVersion((version) => version + 1);
+        callbacksRef.current.onLoadSuccess?.(result.stats);
       } catch (err) {
         if (!cancelled) {
-          onLoadError?.(err?.message || 'Failed to load 3D scene asset.');
+          callbacksRef.current.onLoadError?.(err?.message || 'Failed to load 3D scene asset.');
         }
       }
     }
@@ -303,6 +327,7 @@ const SceneViewer = forwardRef(function SceneViewer(
 
     return () => {
       cancelled = true;
+      abortController.abort();
     };
   }, [sceneConfig]);
 
@@ -338,6 +363,11 @@ const SceneViewer = forwardRef(function SceneViewer(
       poiInteractablesRef.current = [];
     }
 
+    if (loadedSceneIdRef.current !== sceneConfig?.id) {
+      drawRoute([]);
+      return;
+    }
+
     const pois = sceneConfig?.pois || [];
     if (pois.length > 0) {
       const { group, interactables } = createPOIMarkers(pois, activePoi?.id || null);
@@ -353,12 +383,12 @@ const SceneViewer = forwardRef(function SceneViewer(
         activePoi.waypoint
       );
       drawRoute(route?.points || []);
-      onRouteComputed?.(route ? { ...route, poi: activePoi } : null);
+      callbacksRef.current.onRouteComputed?.(route ? { ...route, poi: activePoi } : null);
     } else {
       drawRoute([]);
-      onRouteComputed?.(null);
+      callbacksRef.current.onRouteComputed?.(null);
     }
-  }, [sceneConfig, activePoi]);
+  }, [sceneConfig, activePoi, sceneStatsVersion]);
 
   return (
     <div className="viewport-container" aria-label="Interactive 3D Spatial Viewport">

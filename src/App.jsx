@@ -24,6 +24,7 @@ import {
 export default function App() {
   const viewerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const importedUrlsRef = useRef(new Set());
 
   const [customScenes, setCustomScenes] = useState({});
   const [activeSceneId, setActiveSceneId] = useState(DEFAULT_SCENE_ID);
@@ -60,6 +61,10 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  useEffect(() => () => {
+    for (const url of importedUrlsRef.current) URL.revokeObjectURL(url);
+  }, []);
+
   const handleToggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen?.().catch(() => { });
@@ -77,10 +82,7 @@ export default function App() {
 
   const handleStartExplore = useCallback(() => {
     setShowWelcome(false);
-    // Attempt to engage pointer lock on desktop when clicking "Explore the space"
-    window.setTimeout(() => {
-      viewerRef.current?.lockPointer();
-    }, 40);
+    viewerRef.current?.lockPointer();
   }, []);
 
   const handleSelectPoi = useCallback((poi, shouldTransition = false) => {
@@ -108,6 +110,7 @@ export default function App() {
     }
 
     const objectUrl = URL.createObjectURL(file);
+    importedUrlsRef.current.add(objectUrl);
     const mode = ext === 'splat' ? 'splat' : 'glb';
     const customId = `custom-${Date.now()}`;
 
@@ -120,11 +123,11 @@ export default function App() {
         mode === 'splat'
           ? 'Imported 3D Gaussian Splat (.splat)'
           : 'Imported glTF/GLB Mesh (.glb)',
-      reconstructionStatus: `User-Imported ${mode.toUpperCase()} Reconstruction Asset`,
-      isReconstructed: true,
+      reconstructionStatus: 'User-imported asset; capture provenance and spatial calibration unverified',
+      isReconstructed: false,
       assetUrl: objectUrl,
-      dimensionsLabel: 'Custom Bounds',
-      description: `Local ${mode.toUpperCase()} asset (${(file.size / 1024).toFixed(1)} KB) imported directly from device storage with proxy room boundaries.`,
+      dimensionsLabel: 'Uncalibrated bounds',
+      description: `Local ${mode.toUpperCase()} asset (${(file.size / 1024).toFixed(1)} KB). Default navigation bounds are placeholders until measured against this asset.`,
       spawn: {
         position: [0, DEFAULT_STANDING_HEIGHT, 2.6],
         yaw: 0,
@@ -193,6 +196,7 @@ export default function App() {
           setIsLoading(true);
           setLoadError(null);
           setLoadProgress(null);
+          setSceneStats(null);
         }}
         onLoadProgress={(prog) => setLoadProgress(prog)}
         onLoadSuccess={(stats) => {
@@ -214,7 +218,7 @@ export default function App() {
         <div>
           <div className="scene-info-top">
             <span
-              className={`scene-type-chip ${!activeScene.isReconstructed ? 'chip-demo' : ''}`}
+              className={`scene-type-chip ${activeScene.mode === 'demo' ? 'chip-demo' : ''}`}
             >
               <Layers size={11} />
               <span>{activeScene.sceneType}</span>

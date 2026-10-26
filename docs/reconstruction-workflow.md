@@ -2,7 +2,7 @@
 ## Namma Space — From Smartphone Footage to Interactive Browser Twin
 
 > **Engineering Transparency Note:**
-> Photogrammetric Structure-from-Motion (COLMAP), Neural Radiance Fields (NeRF), and 3D Gaussian Splatting (3DGS) training require CUDA/Metal GPU compute and take 5–45 minutes per room. Namma Space does **not** fabricate an in-browser AI reconstruction API. Instead, it provides a modular, production-ready web runtime (`src/viewer/sceneLoader.js`) that ingests standardized `.glb` and `.splat` outputs from established reconstruction pipelines.
+> Photogrammetric Structure-from-Motion (COLMAP), Neural Radiance Fields (NeRF), and 3D Gaussian Splatting (3DGS) training require CUDA/Metal GPU compute and take 5–45 minutes per room. Namma Space does **not** fabricate an in-browser AI reconstruction API. Instead, it provides a modular, web runtime (`src/viewer/sceneLoader.js`) that ingests standardized `.glb` and `.splat` outputs from established reconstruction pipelines.
 
 ---
 
@@ -47,10 +47,10 @@ ns-export poisson --load-config outputs/.../config.yml --output-dir public/model
 ```text
 public/
   models/
-    sample-room-scan.glb      # Included sample GLB mesh asset
+    sample-room-scan.glb      # Included generated GLB demonstration asset
     your-room-scan.glb        # Place your exported GLB/glTF meshes here
   scenes/
-    sample-capture.splat      # Included sample 32-byte binary Gaussian Splat asset
+    sample-capture.splat      # Included synthetic 32-byte Gaussian Splat demonstration asset
     your-capture.splat        # Place your exported .splat captures here
 ```
 
@@ -125,3 +125,10 @@ You can also click **"Import Asset"** (bottom-left Scene Info card) or **"Import
 Namma Space solves this cleanly by decoupling **Visual Radiance Rendering** (`sceneLoader.js`) from **Spatial Physics & Walkable Navigation** (`collision.js`):
 - Both `.glb` and `.splat` scenes use lightweight, deterministic Axis-Aligned Bounding Boxes (`colliders`) and `roomBounds`.
 - Toggle the **"Colliders"** button in the top-right header at any time to inspect the wireframe collision and walkable boundary volumes overlaid on the 3D scene.
+
+
+## Standard `.splat` handoff
+
+Export a standard antimatter15-style 32-byte `.splat` file. Each record is little-endian float32 position XYZ, float32 scale XYZ, uint8 RGBA, and uint8 quaternion WXYZ. `@mkkellogg/gaussian-splats-3d` 0.4.7 renders the visual splats. A PLY or another packed container must be converted to this format before import. The provided sample is synthetic, so use an independently reconstructed room asset for capture validation.
+
+After placing the real asset, measure its transform and floor level, register the corrected spawn and room bounds in `src/config/scenes.js`, build explicit furniture and wall proxies, and test every POI waypoint and route with the collider overlay enabled. Browser imports use placeholder bounds for preview only.

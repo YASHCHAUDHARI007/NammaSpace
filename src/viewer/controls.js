@@ -212,8 +212,14 @@ export class FirstPersonController {
    */
   lock() {
     try {
+      const policy = document.permissionsPolicy || document.featurePolicy;
+      if (policy?.allowsFeature && !policy.allowsFeature('pointer-lock')) {
+        this.onLockChange(false);
+        return;
+      }
       if (!this.pointerLock.isLocked && this.domElement?.requestPointerLock) {
-        this.pointerLock.lock();
+        const request = this.domElement.requestPointerLock();
+        if (request?.catch) request.catch(() => this._onPointerLockError());
       }
     } catch {
       this.onLockChange(false);
@@ -256,7 +262,7 @@ export class FirstPersonController {
   /**
    * Smoothly transition camera to a waypoint and look at a 3D target (used by POI selection).
    */
-  transitionToTarget(waypointXZ, lookAtXYZ, durationSec = 1.05) {
+  transitionToTarget(waypointXZ, lookAtXYZ, durationSec = 1.05, pathPointsXZ = null) {
     const startPos = this.camera.position.clone();
     const endPos = new THREE.Vector3(
       waypointXZ[0],
@@ -270,11 +276,21 @@ export class FirstPersonController {
     dummyCam.lookAt(new THREE.Vector3(lookAtXYZ[0], lookAtXYZ[1], lookAtXYZ[2]));
     const endQuat = dummyCam.quaternion.clone();
 
+    const path = Array.isArray(pathPointsXZ) && pathPointsXZ.length > 1
+      ? pathPointsXZ.map(([x, z]) => new THREE.Vector3(x, this.standingHeight, z))
+      : [startPos, endPos];
+    const distances = [0];
+    for (let i = 1; i < path.length; i++) {
+      distances.push(distances[i - 1] + path[i].distanceTo(path[i - 1]));
+    }
+
     this.activeTransition = {
       startPos,
       endPos,
       startQuat,
       endQuat,
+      path,
+      distances,
       elapsed: 0,
       duration: Math.max(0.25, durationSec)
     };
@@ -295,7 +311,13 @@ export class FirstPersonController {
       // Cubic ease-in-out
       const t = rawT < 0.5 ? 4 * rawT * rawT * rawT : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
 
-      this.camera.position.lerpVectors(tr.startPos, tr.endPos, t);
+      const travel = t * tr.distances[tr.distances.length - 1];
+      let segment = 1;
+      while (segment < tr.distances.length - 1 && tr.distances[segment] < travel) segment++;
+      const start = tr.distances[segment - 1];
+      const length = tr.distances[segment] - start;
+      const fraction = length > 0 ? (travel - start) / length : 1;
+      this.camera.position.lerpVectors(tr.path[segment - 1], tr.path[segment], fraction);
       this.camera.position.y = this.standingHeight;
       this.camera.quaternion.slerpQuaternions(tr.startQuat, tr.endQuat, t);
 

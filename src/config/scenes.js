@@ -120,7 +120,7 @@ export const SCENES = {
         category: 'Workspace',
         description: 'Solid oak studio table with task lighting and seating for four.',
         position: [-2.7, 1.15, -1.6],
-        waypoint: [-2.7, 0.05],
+        waypoint: [-2.7, -0.25],
         lookAt: [-2.7, 0.85, -1.6]
       },
       {
@@ -164,16 +164,16 @@ export const SCENES = {
 
   'reconstructed-glb': {
     id: 'reconstructed-glb',
-    name: 'Captured Room — GLB Mesh Pipeline',
+    name: 'Sample Room — GLB Mesh Pipeline',
     shortLabel: 'Mesh Mode (.glb Asset)',
     mode: 'glb',
     sceneType: 'glTF 2.0 Binary Mesh (.glb)',
-    reconstructionStatus: 'External Mesh Asset + Proxy Floor/Obstacle Bounds',
-    isReconstructed: true,
+    reconstructionStatus: 'Generated demonstration mesh; capture provenance unverified',
+    isReconstructed: false,
     assetUrl: '/models/sample-room-scan.glb',
     dimensionsLabel: '8.0m × 7.0m × 3.0m',
     description:
-      'Loads a standard glTF/GLB 3D asset via Three.js GLTFLoader. Demonstrates the production mesh import pipeline for smartphone reconstructions exported from Polycam, Luma AI, RealityCapture, or Nerfstudio.',
+      'Loads the included generated GLB demonstration mesh via Three.js GLTFLoader. Replace it with a measured capture and calibrate collision proxies before using navigation.',
     spawn: {
       position: [0, DEFAULT_STANDING_HEIGHT, 2.5],
       yaw: 0,
@@ -233,16 +233,16 @@ export const SCENES = {
 
   'reconstructed-splat': {
     id: 'reconstructed-splat',
-    name: 'Captured Room — 3D Gaussian Splat Pipeline',
+    name: 'Sample Room — 3D Gaussian Splat Pipeline',
     shortLabel: 'Gaussian Splat Mode (.splat)',
     mode: 'splat',
     sceneType: '3D Gaussian Splatting (.splat)',
-    reconstructionStatus: 'External 3DGS Splat Buffer + Proxy Collision Geometry',
-    isReconstructed: true,
+    reconstructionStatus: 'Synthetic demonstration splats; not a smartphone reconstruction',
+    isReconstructed: false,
     assetUrl: '/scenes/sample-capture.splat',
     dimensionsLabel: '8.0m × 7.0m × 3.0m',
     description:
-      'Loads a binary .splat radiance field capture paired with a lightweight proxy floor plan and obstacle bounds—solving the industry-standard challenge that raw 3D Gaussian Splats lack triangle collision meshes.',
+      'Loads the included synthetic .splat fixture with an example proxy floor plan. Replace it with a measured capture and calibrate proxies before using navigation.',
     spawn: {
       position: [0, DEFAULT_STANDING_HEIGHT, 2.5],
       yaw: 0,

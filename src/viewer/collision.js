@@ -87,81 +87,44 @@ export class CollisionSystem {
   resolveMovement(currentPos, desiredPos) {
     const r = this.playerRadius;
     const b = this.roomBounds;
-
-    let nextX = desiredPos.x;
-    let nextZ = desiredPos.z;
-    let collided = false;
-    let hitLabel = null;
-
-    // 1. Clamp against outer room perimeter walls
-    if (nextX < b.minX + r) {
-      nextX = b.minX + r;
-      collided = true;
-      hitLabel = 'West Perimeter Wall';
-    } else if (nextX > b.maxX - r) {
-      nextX = b.maxX - r;
-      collided = true;
-      hitLabel = 'East Perimeter Wall';
-    }
-
-    if (nextZ < b.minZ + r) {
-      nextZ = b.minZ + r;
-      collided = true;
-      hitLabel = 'North Perimeter Wall';
-    } else if (nextZ > b.maxZ - r) {
-      nextZ = b.maxZ - r;
-      collided = true;
-      hitLabel = 'South Perimeter Wall';
-    }
-
-    // 2. Iterative circle-vs-AABB pushout for furniture & structural obstacles
-    // Running 2 passes handles corner wedges cleanly without jitter
-    for (let pass = 0; pass < 2; pass++) {
-      for (let i = 0; i < this.colliders.length; i++) {
-        const box = this.colliders[i];
-
-        // Find closest point on the AABB to the player cylinder center (nextX, nextZ)
-        const closestX = Math.max(box.minX, Math.min(nextX, box.maxX));
-        const closestZ = Math.max(box.minZ, Math.min(nextZ, box.maxZ));
-
-        const dx = nextX - closestX;
-        const dz = nextZ - closestZ;
-        const distSq = dx * dx + dz * dz;
-
-        if (distSq < r * r) {
-          collided = true;
-          hitLabel = box.label || box.id;
-
-          if (distSq > 1e-6) {
-            // Push circle radially out from closest point on AABB
-            const dist = Math.sqrt(distSq);
-            const overlap = r - dist;
-            nextX += (dx / dist) * overlap;
-            nextZ += (dz / dist) * overlap;
-          } else {
-            // Center is strictly inside AABB; push out along minimum penetration axis
-            const leftPen = Math.abs(nextX - box.minX) + r;
-            const rightPen = Math.abs(box.maxX - nextX) + r;
-            const topPen = Math.abs(nextZ - box.minZ) + r;
-            const bottomPen = Math.abs(box.maxZ - nextZ) + r;
-            const minPen = Math.min(leftPen, rightPen, topPen, bottomPen);
-
-            if (minPen === leftPen) nextX = box.minX - r;
-            else if (minPen === rightPen) nextX = box.maxX + r;
-            else if (minPen === topPen) nextZ = box.minZ - r;
-            else nextZ = box.maxZ + r;
-          }
+    const hitAt = (x, z) => {
+      if (x < b.minX + r) return 'West Perimeter Wall';
+      if (x > b.maxX - r) return 'East Perimeter Wall';
+      if (z < b.minZ + r) return 'North Perimeter Wall';
+      if (z > b.maxZ - r) return 'South Perimeter Wall';
+      for (const box of this.colliders) {
+        const closestX = Math.max(box.minX, Math.min(x, box.maxX));
+        const closestZ = Math.max(box.minZ, Math.min(z, box.maxZ));
+        if ((x - closestX) ** 2 + (z - closestZ) ** 2 < r * r - 1e-9) {
+          return box.label || box.id || 'Obstacle';
         }
       }
+      return null;
+    };
+
+    const dx = desiredPos.x - currentPos.x;
+    const dz = desiredPos.z - currentPos.z;
+    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / (r * 0.25)));
+    let x = currentPos.x;
+    let z = currentPos.z;
+    let hitLabel = null;
+    for (let step = 0; step < steps; step++) {
+      const nextX = Math.max(b.minX + r, Math.min(b.maxX - r, x + dx / steps));
+      const xHit = hitAt(nextX, z);
+      if (xHit) hitLabel = xHit;
+      else x = nextX;
+
+      const nextZ = Math.max(b.minZ + r, Math.min(b.maxZ - r, z + dz / steps));
+      const zHit = hitAt(x, nextZ);
+      if (zHit) hitLabel = zHit;
+      else z = nextZ;
     }
-
-    // Final safety clamp to room boundaries after obstacle pushout
-    nextX = Math.max(b.minX + r, Math.min(b.maxX - r, nextX));
-    nextZ = Math.max(b.minZ + r, Math.min(b.maxZ - r, nextZ));
-
+    if (!hitLabel && (Math.abs(x - desiredPos.x) > 1e-6 || Math.abs(z - desiredPos.z) > 1e-6)) {
+      hitLabel = 'Perimeter Wall';
+    }
     return {
-      position: new THREE.Vector3(nextX, this.standingHeight, nextZ),
-      collided,
+      position: new THREE.Vector3(x, this.standingHeight, z),
+      collided: Boolean(hitLabel),
       hitLabel
     };
   }
@@ -182,6 +145,7 @@ export class CollisionSystem {
 
     const borderGeo = new THREE.BoxGeometry(width, 0.04, depth);
     const borderEdges = new THREE.EdgesGeometry(borderGeo);
+    borderGeo.dispose();
     const borderMat = new THREE.LineBasicMaterial({
       color: 0x48b878,
       transparent: true,
@@ -208,6 +172,7 @@ export class CollisionSystem {
 
       const geo = new THREE.BoxGeometry(w, h, d);
       const edges = new THREE.EdgesGeometry(geo);
+      geo.dispose();
       const wire = new THREE.LineSegments(edges, boxMat);
       wire.position.set(cx, cy, cz);
       group.add(wire);
@@ -229,6 +194,8 @@ export class CollisionSystem {
     const cellSize = 0.2;
     const clearance = this.playerRadius + 0.06;
     const b = this.roomBounds;
+    if (!this.isPointWalkable(startXZ[0], startXZ[1], clearance) ||
+        !this.isPointWalkable(goalXZ[0], goalXZ[1], clearance)) return null;
 
     const cols = Math.ceil((b.maxX - b.minX) / cellSize);
     const rows = Math.ceil((b.maxZ - b.minZ) / cellSize);
@@ -249,7 +216,7 @@ export class CollisionSystem {
       return this.isPointWalkable(wx, wz, clearance);
     };
 
-    // Snap start or goal to nearest walkable cell if currently close to an obstacle
+    // Map valid world endpoints to nearby walkable grid cells.
     const findNearestWalkableCell = (origin) => {
       if (isCellFree(origin.gx, origin.gz)) return origin;
       for (let radius = 1; radius <= 8; radius++) {
@@ -268,6 +235,7 @@ export class CollisionSystem {
 
     const startCell = findNearestWalkableCell(toGrid(startXZ[0], startXZ[1]));
     const goalCell = findNearestWalkableCell(toGrid(goalXZ[0], goalXZ[1]));
+    if (!isCellFree(startCell.gx, startCell.gz) || !isCellFree(goalCell.gx, goalCell.gz)) return null;
 
     const key = (gx, gz) => gz * cols + gx;
     const startKey = key(startCell.gx, startCell.gz);

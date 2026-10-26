@@ -10,8 +10,8 @@
 
 - **Three Modular Scene Modes (`src/viewer/sceneLoader.js`):**
   1. **Procedural Baseline (`mode: 'demo'`):** Full-scale `10m × 8m × 3.2m` reference interior built with Three.js geometry (work table, modular L-sofa, coffee table, walnut storage cabinet, central calibration plinth, and east telemetry console). Clearly labeled as manual baseline geometry—never misrepresented as AI output.
-  2. **Reconstructed Mesh Pipeline (`mode: 'glb'`):** Loads standard binary glTF 2.0 (`.glb` / `.gltf`) scans via Three.js `GLTFLoader` + `DRACOLoader` with real byte-transfer progress and automatic/configured AABB collision volumes.
-  3. **3D Gaussian Splat Pipeline (`mode: 'splat'`):** Streams binary 32-byte `.splat` radiance field captures with custom Gaussian radial kernel rendering and explicit proxy collision bounds.
+  2. **Reconstructed Mesh Pipeline (`mode: 'glb'`):** Loads standard binary glTF 2.0 (`.glb` / `.gltf`) scans via Three.js `GLTFLoader` + `DRACOLoader` with real byte-transfer progress and explicitly configured AABB collision volumes.
+  3. **3D Gaussian Splat Pipeline (`mode: 'splat'`):** Validates standard 32-byte `.splat` files, then renders them through `@mkkellogg/gaussian-splats-3d` with anisotropic scale, quaternion rotation, RGBA opacity, depth sorting, and explicit proxy collision bounds.
 - **Instant Local Asset Import:** Click **"Import Asset"** (or **"Import .glb / .splat"** on the Welcome screen) to load any `.glb`, `.gltf`, or `.splat` file directly from your device without modifying code.
 - **First-Person Spatial Controller (`src/viewer/controls.js`):**
   - `PointerLockControls` mouse look + drag-to-look fallback and mobile touch D-pad.
@@ -50,9 +50,9 @@ src/
   main.jsx                # React root mount
 public/
   models/
-    sample-room-scan.glb  # Sample binary glTF 2.0 room mesh for pipeline verification
+    sample-room-scan.glb  # Generated glTF 2.0 demonstration mesh for pipeline verification
   scenes/
-    sample-capture.splat  # Sample 32-byte binary 3D Gaussian Splat asset (2,153 splats)
+    sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
 docs/
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
@@ -68,7 +68,7 @@ docs/
 
 ### Install & Run Development Server
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 Open `http://localhost:5173` in Chrome, Edge, Firefox, or Safari.
@@ -76,6 +76,7 @@ Open `http://localhost:5173` in Chrome, Edge, Firefox, or Safari.
 ### Production Build & Local Preview
 ```bash
 npm run build
+npm test
 npm run preview
 ```
 
@@ -97,3 +98,11 @@ The project builds to a static Vite bundle in `dist/` and includes [`vercel.json
 
 - **Vercel:** Run `npx vercel` or connect the Git repository with Build Command `npm run build` and Output Directory `dist`.
 - **Netlify:** Set Build Command to `npm run build` and Publish Directory to `dist`.
+
+---
+
+## Asset format and spatial calibration
+
+The included GLB and `.splat` assets are generated demonstration fixtures. They are not evidence of a smartphone reconstruction. The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
+
+Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.
