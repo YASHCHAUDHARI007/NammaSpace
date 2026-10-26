@@ -1,7 +1,7 @@
 # Smartphone Indoor Capture Standard Operating Procedure (SOP)
 ## Namma Space — IIT Bombay Techfest 2026–27
 
-This document defines a reproducible, field-tested workflow for capturing an indoor room using a standard smartphone so that structure-from-motion (SfM), Multi-View Stereo (MVS), or 3D Gaussian Splatting (3DGS) pipelines produce clean, metric-ready 3D assets.
+This document proposes a reproducible smartphone capture workflow for structure-from-motion (SfM), Multi-View Stereo (MVS), or 3D Gaussian Splatting (3DGS). It has not yet been validated with a genuine room capture in this project; metric accuracy must be measured after reconstruction.
 
 ---
 
@@ -78,5 +78,5 @@ Follow a structured **3-Loop Capture Trajectory**:
 Before importing the asset into Namma Space (`public/models/` or `public/scenes/`):
 - [ ] **Coordinate Orientation:** Floor lies on the horizontal `XZ` plane (`Y = 0`), with `+Y` pointing up.
 - [ ] **Metric Scale:** `1.0` scene unit equals `1.0 meter` (standing eye height `1.68m` feels natural).
-- [ ] **File Size Budget:** `.glb` is Draco/Meshopt compressed (`< 25 MB` recommended for web); `.splat` is pruned of exterior floaters (`< 35 MB`).
+- [ ] **File Size Budget:** Prefer an uncompressed `.glb` for offline checks, or Draco compression when the external decoder is reachable (`< 25 MB` is a starting target, not a validated device limit). Meshopt is not configured in this viewer. Prune exterior floaters from `.splat` (`< 35 MB` is likewise a starting target).
 - [ ] **Collision Proxy Defined:** Outer room `roomBounds` (`minX`, `maxX`, `minZ`, `maxZ`) and major furniture `colliders` are recorded in `src/config/scenes.js`.

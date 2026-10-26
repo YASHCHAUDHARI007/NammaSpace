@@ -60,9 +60,11 @@ export default function Header({
   }, [activeScene?.id]);
 
   let statusClass = 'status-dot';
-  let statusText = activeScene?.isReconstructed
-    ? 'WebGL Active • Reconstructed'
-    : 'WebGL Active • Asset Preview';
+  let statusText = activeScene?.navigationStatus === 'preview'
+    ? 'Uncalibrated Preview • Placeholder Bounds'
+    : activeScene?.isReconstructed
+      ? 'Calibrated Capture'
+      : 'Synthetic Fixture';
 
   if (isLoading) {
     statusClass = 'status-dot status-loading';

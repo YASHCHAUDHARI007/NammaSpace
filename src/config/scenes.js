@@ -6,7 +6,7 @@
  *   baseline test environment for controls, collision physics, and Round 2 wayfinding hooks.
  *   It is NEVER misrepresented as AI-reconstructed output.
  * - `mode: 'glb'` loads external polygon mesh reconstructions (.glb / .gltf) via Three.js GLTFLoader.
- * - `mode: 'splat'` loads external 3D Gaussian Splat captures (.splat / .ply) via the Gaussian Splat
+ * - `mode: 'splat'` loads standard 32-byte 3D Gaussian Splat assets (.splat) via the Gaussian Splat
  *   pipeline with a separate proxy collision layout (since splats are volumetric Gaussians without mesh faces).
  */
 

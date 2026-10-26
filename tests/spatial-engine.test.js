@@ -6,7 +6,7 @@ import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
 import { FirstPersonController } from '../src/viewer/controls.js';
 import { SCENES } from '../src/config/scenes.js';
-import { validateSplatBuffer } from '../src/viewer/sceneLoader.js';
+import { validateSplatBuffer, validateSceneConfig, loadSpatialScene } from '../src/viewer/sceneLoader.js';
 
 const room = {
   roomBounds: { minX: -3, maxX: 3, minZ: -3, maxZ: 3 },
@@ -35,6 +35,36 @@ test('sample .splat is well formed and accepted by installed parser', () => {
   assert.equal(validateSplatBuffer(bytes), 2153);
   assert.equal(SplatParser.parseStandardSplatToUncompressedSplatArray(bytes).splats.length, 2153);
   assert.throws(() => validateSplatBuffer(bytes.slice(0, 31)), /multiple of 32/);
+});
+
+test('scene ingestion rejects missing or invalid navigation calibration before loading', async () => {
+  for (const scene of Object.values(SCENES)) assert.doesNotThrow(() => validateSceneConfig(scene));
+  const missingBounds = { ...SCENES['reconstructed-glb'], roomBounds: undefined };
+  await assert.rejects(loadSpatialScene(missingBounds), /roomBounds/);
+  const missingColliders = { ...SCENES['reconstructed-glb'], colliders: undefined };
+  assert.throws(() => validateSceneConfig(missingColliders), /colliders/);
+  const invalidCollider = { ...SCENES['reconstructed-glb'], colliders: [{ id: 'bad', minX: 2, maxX: 1, minZ: 0, maxZ: 1 }] };
+  assert.throws(() => validateSceneConfig(invalidCollider), /collider/);
+  const badFloor = { ...SCENES['reconstructed-glb'], roomBounds: { ...SCENES['reconstructed-glb'].roomBounds, floorY: 1 } };
+  assert.throws(() => validateSceneConfig(badFloor), /floorY/);
+  const unverifiedReal = { ...SCENES['reconstructed-glb'], isReconstructed: true };
+  assert.throws(() => validateSceneConfig(unverifiedReal), /calibration/);
+  const declaredCalibration = { ...unverifiedReal, calibration: { captureSource: 'unit-test fixture', upAxis: 'Y', metersPerAssetUnit: 1, originDescription: 'unit-test origin', referenceDistanceMeters: 1, referenceDistanceAssetUnits: 1 } };
+  assert.doesNotThrow(() => validateSceneConfig(declaredCalibration));
+  assert.throws(() => validateSceneConfig({ ...SCENES['demo-studio'], isReconstructed: true }), /Procedural demo/);
+  const unreachablePoi = { ...SCENES['reconstructed-glb'], pois: [{ ...SCENES['reconstructed-glb'].pois[0], waypoint: [0, 0] }] };
+  assert.throws(() => validateSceneConfig(unreachablePoi), /Invalid POI/);
+});
+
+test('mesh loader rejects an empty glTF scene instead of reporting a successful import', async () => {
+  const originalProgressEvent = globalThis.ProgressEvent;
+  globalThis.ProgressEvent ??= class { constructor(_type, options) { Object.assign(this, options); } };
+  const emptyGltf = 'data:model/gltf+json,' + encodeURIComponent(JSON.stringify({ asset: { version: '2.0' }, scenes: [{ nodes: [] }], scene: 0 }));
+  try {
+    await assert.rejects(loadSpatialScene({ ...SCENES['reconstructed-glb'], assetUrl: emptyGltf }), /no renderable mesh/i);
+  } finally {
+    if (originalProgressEvent === undefined) delete globalThis.ProgressEvent;
+  }
 });
 
 test('walls stop movement at player radius and furniture cannot be tunneled through', () => {

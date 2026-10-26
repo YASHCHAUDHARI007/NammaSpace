@@ -109,8 +109,9 @@ export default function App() {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext !== 'glb' && ext !== 'gltf' && ext !== 'splat') {
       setLoadError(
-        `Unsupported file extension ".${ext}". Please select a reconstructed .glb, .gltf, or .splat file.`
+        `Unsupported file extension ".${ext}". Please select a .glb, .gltf, or .splat asset.`
       );
+      event.target.value = '';
       return;
     }
 
@@ -129,6 +130,7 @@ export default function App() {
           ? 'Imported 3D Gaussian Splat (.splat)'
           : `Imported glTF Mesh (.${ext})`,
       reconstructionStatus: 'User-imported asset; capture provenance and spatial calibration unverified',
+      navigationStatus: 'preview',
       isReconstructed: false,
       assetUrl: objectUrl,
       dimensionsLabel: 'Uncalibrated bounds',
@@ -248,6 +250,9 @@ export default function App() {
         <div className="provenance-banner">
           <span>
             <strong>Status:</strong> {activeScene.reconstructionStatus}
+            {activeScene.navigationStatus === 'preview' && (
+              <><br /><strong>Navigation:</strong> Placeholder room bounds; no measured collision proxies or POIs.</>
+            )}
           </span>
         </div>
 
@@ -435,21 +440,14 @@ export default function App() {
                   <span>3. Registering Your Scene in Code</span>
                 </h4>
                 <p>
-                  Add your exported file to `src/config/scenes.js` (or click{' '}
-                  <strong>Import Asset</strong> in the bottom-left card to preview immediately):
+                  Use <strong>Import Asset</strong> for an uncalibrated preview. To enable trustworthy
+                  navigation, align the asset to meters with a Y-up floor at zero, then register its
+                  measured spawn, room bounds, colliders, POIs, and capture evidence in
+                  <code>src/config/scenes.js</code>.
                 </p>
-                <pre className="code-snippet">{`'my-room-scan': {
-  id: 'my-room-scan',
-  name: 'Hostel Lounge Scan',
-  mode: 'glb', // or 'splat'
-  isReconstructed: true,
-  assetUrl: '/models/my-room.glb',
-  roomBounds: { minX: -4, maxX: 4, minZ: -4, maxZ: 4 },
-  colliders: [/* optional proxy AABBs */]
-}`}</pre>
                 <p style={{ fontSize: '12px', color: '#5b635e' }}>
                   Full detailed guides are located in <code>docs/capture-sop.md</code>,{' '}
-                  <code>docs/reconstruction-workflow.md</code>, and{' '}
+                  <code>docs/reconstruction-workflow.md</code>, <code>docs/real-scan-pilot.md</code>, and{' '}
                   <code>docs/architecture.md</code>.
                 </p>
               </div>

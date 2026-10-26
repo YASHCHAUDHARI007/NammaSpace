@@ -58,63 +58,11 @@ public/
 
 ## 3. Replacing or Adding a Reconstructed Scene in `src/config/scenes.js`
 
-Open [`src/config/scenes.js`](../src/config/scenes.js) and add or update an entry in the `SCENES` registry:
-
-```javascript
-'iitb-lab-scan': {
-  id: 'iitb-lab-scan',
-  name: 'IITB Innovation Lab — Reconstructed Twin',
-  shortLabel: 'Lab Scan (.glb)',
-  mode: 'glb', // Use 'glb' for meshes or 'splat' for 3D Gaussian Splats
-  sceneType: 'glTF 2.0 Binary Mesh (.glb)',
-  reconstructionStatus: 'Smartphone Photogrammetry Scan + Proxy Collision Bounds',
-  isReconstructed: true,
-  assetUrl: '/models/your-room-scan.glb',
-  dimensionsLabel: '9.2m × 6.8m × 3.0m',
-  description: 'Smartphone photogrammetry reconstruction of the indoor lab space.',
-  spawn: {
-    position: [0, 1.68, 2.5],
-    yaw: 0,
-    pitch: -0.04
-  },
-  roomBounds: {
-    minX: -4.5,
-    maxX: 4.5,
-    minZ: -3.3,
-    maxZ: 3.3,
-    floorY: 0,
-    ceilingY: 3.0
-  },
-  // Define AABB collision boxes for major furniture (required for .splat scenes)
-  colliders: [
-    {
-      id: 'lab-bench-1',
-      label: 'Central Electronics Workbench',
-      minX: -1.5,
-      maxX: 1.5,
-      minY: 0,
-      maxY: 0.9,
-      minZ: -0.8,
-      maxZ: 0.8
-    }
-  ],
-  // Define searchable Points of Interest for A* Wayfinding
-  pois: [
-    {
-      id: 'poi-workbench',
-      name: 'Central Electronics Workbench',
-      category: 'Lab Station',
-      description: 'Oscilloscope and soldering station.',
-      position: [0, 1.2, 0],
-      waypoint: [0, 1.5],
-      lookAt: [0, 0.85, 0]
-    }
-  ]
-}
-```
+Open [`src/config/scenes.js`](../src/config/scenes.js) and add an entry using measured values from your own asset. The old example dimensions were illustrative, not a real calibration. Follow the field-by-field [real-scan pilot guide](real-scan-pilot.md) before setting `isReconstructed: true`. The loader checks room bounds, spawn, collider boxes and reachable POI waypoints before loading. A real-capture entry also needs documented `calibration` evidence.
 
 ### Instant Browser Preview (Zero Code Changes)
 You can also click **"Import Asset"** (bottom-left Scene Info card) or **"Import .glb / .splat"** (on the Welcome screen) to load any `.glb`, `.gltf`, or `.splat` file directly from your computer into the live viewer.
+This is an **uncalibrated preview** with placeholder room bounds and no measured collision proxies. A local `.gltf` must embed its buffers and textures; package multi-file scenes as `.glb` for local import.
 
 ---
 

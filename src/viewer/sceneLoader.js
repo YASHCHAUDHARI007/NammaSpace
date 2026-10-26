@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+import { CollisionSystem } from './collision.js';
+import { DEFAULT_STANDING_HEIGHT, PLAYER_RADIUS } from '../config/scenes.js';
 import {
   buildProceduralDemoRoom,
   buildReconstructionCalibrationStage,
@@ -27,6 +29,56 @@ const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
 gltfLoader.setDRACOLoader(dracoLoader);
 
+export function validateSceneConfig(scene) {
+  if (!scene || !['demo', 'glb', 'splat'].includes(scene.mode)) {
+    throw new Error('Invalid scene configuration: mode must be demo, glb, or splat.');
+  }
+  if (scene.mode === 'demo' && scene.isReconstructed) {
+    throw new Error('Procedural demo geometry cannot be declared a real reconstruction.');
+  }
+  const b = scene.roomBounds;
+  if (!b || !['minX', 'maxX', 'minZ', 'maxZ', 'floorY', 'ceilingY'].every((key) => Number.isFinite(b[key])) ||
+      b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= DEFAULT_STANDING_HEIGHT) {
+    throw new Error('Invalid roomBounds: set finite X/Z limits, floorY=0, and ceilingY above standing eye height after aligning the asset to meters and Y-up.');
+  }
+  if (!Array.isArray(scene.colliders)) {
+    throw new Error('Missing colliders: provide an explicit array of measured furniture/wall AABBs (or [] for a verified empty room).');
+  }
+  for (const collider of scene.colliders) {
+    if (!collider || !['minX', 'maxX', 'minY', 'maxY', 'minZ', 'maxZ'].every((key) => Number.isFinite(collider[key])) ||
+        collider.minX >= collider.maxX || collider.minY >= collider.maxY || collider.minZ >= collider.maxZ) {
+      throw new Error(`Invalid collider "${collider?.id || 'unnamed'}": use finite ordered min/max X, Y, and Z bounds in meters.`);
+    }
+  }
+  const vector = (value, length) => Array.isArray(value) && value.length === length && value.every(Number.isFinite);
+  if (!vector(scene.spawn?.position, 3) || scene.spawn.position[1] !== DEFAULT_STANDING_HEIGHT ||
+      !Number.isFinite(scene.spawn.yaw) || !Number.isFinite(scene.spawn.pitch)) {
+    throw new Error(`Invalid spawn: set finite [x, ${DEFAULT_STANDING_HEIGHT}, z], yaw, and pitch in the aligned world frame.`);
+  }
+  if (!Array.isArray(scene.pois)) throw new Error('Missing pois: provide an array, even when empty.');
+  const collision = new CollisionSystem(scene);
+  const start = [scene.spawn.position[0], scene.spawn.position[2]];
+  if (!collision.isPointWalkable(...start, PLAYER_RADIUS + 0.06)) {
+    throw new Error('Invalid spawn: position intersects room bounds or a collider at player clearance.');
+  }
+  for (const poi of scene.pois) {
+    if (!poi || !vector(poi.position, 3) || !vector(poi.lookAt, 3) || !vector(poi.waypoint, 2) ||
+        !collision.computeObstacleAwarePath(start, poi.waypoint)) {
+      throw new Error(`Invalid POI "${poi?.id || 'unnamed'}": set finite position/lookAt and a reachable, clear waypoint.`);
+    }
+  }
+  if (scene.isReconstructed) {
+    const c = scene.calibration;
+    if (!c || typeof c.captureSource !== 'string' || !c.captureSource.trim() ||
+        c.upAxis !== 'Y' || c.metersPerAssetUnit !== 1 ||
+        typeof c.originDescription !== 'string' || !c.originDescription.trim() ||
+        !Number.isFinite(c.referenceDistanceMeters) || c.referenceDistanceMeters <= 0 ||
+        !Number.isFinite(c.referenceDistanceAssetUnits) || c.referenceDistanceAssetUnits <= 0) {
+      throw new Error('Real capture calibration is incomplete: document captureSource, Y-up, 1 meter per asset unit, originDescription, and positive measured reference distances.');
+    }
+  }
+}
+
 /**
  * Load a scene according to its configuration object.
  *
@@ -36,10 +88,7 @@ gltfLoader.setDRACOLoader(dracoLoader);
  */
 export async function loadSpatialScene(sceneConfig, callbacks = {}) {
   const onProgress = callbacks.onProgress || (() => { });
-
-  if (!sceneConfig || !sceneConfig.mode) {
-    throw new Error('Invalid scene configuration: missing `mode` property.');
-  }
+  validateSceneConfig(sceneConfig);
 
   switch (sceneConfig.mode) {
     case 'demo':
@@ -131,12 +180,8 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
 
   const modelRoot = gltf.scene || gltf.scenes?.[0];
   if (!modelRoot) {
-    throw new Error(`GLB asset "${sceneConfig.assetUrl}" contains no valid Three.js scene graph.`);
+    throw new Error(`glTF asset "${sceneConfig.name || sceneConfig.assetUrl}" contains no valid scene graph.`);
   }
-
-  const rootGroup = new THREE.Group();
-  rootGroup.name = `GLBScene_${sceneConfig.id}`;
-  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
 
   let vertexCount = 0;
   let triangleCount = 0;
@@ -159,6 +204,13 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
 
     }
   });
+
+  if (!vertexCount) {
+    throw new Error(`glTF asset "${sceneConfig.name || sceneConfig.assetUrl}" contains no renderable mesh. Export a GLB/glTF with visible mesh geometry.`);
+  }
+  const rootGroup = new THREE.Group();
+  rootGroup.name = `GLBScene_${sceneConfig.id}`;
+  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
 
   rootGroup.add(modelRoot);
 
