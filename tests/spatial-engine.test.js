@@ -89,6 +89,31 @@ test('unreachable and invalid goals return no route; smoothing stays clear', () 
   }
 });
 
+test('nearby distinct points in one grid cell retain both route endpoints', () => {
+  const collision = new CollisionSystem({ roomBounds: room.roomBounds, colliders: [] });
+  const route = collision.computeObstacleAwarePath([1, 1], [1.05, 1.05]);
+  assert.deepEqual(route.points, [[1, 1], [1.05, 1.05]]);
+  assert.equal(route.distanceMeters, 0.07);
+});
+
+test('A* route segments preserve collider clearance between grid cells', () => {
+  const collision = new CollisionSystem(SCENES['demo-studio']);
+  const start = [4.345263509006003, -0.9425950633755837];
+  const goal = [0.6632755170113409, 2.8791527685123417];
+  const route = collision.computeObstacleAwarePath(start, goal);
+  assert.ok(route);
+  assert.deepEqual(route.points[0], start);
+  assert.deepEqual(route.points.at(-1), goal);
+  for (let i = 1; i < route.points.length; i++) {
+    const [a, b] = [route.points[i - 1], route.points[i]];
+    const steps = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.0025);
+    for (let step = 0; step <= steps; step++) {
+      const t = step / steps;
+      assert.equal(collision.isPointWalkable(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 0.42), true);
+    }
+  }
+});
+
 test('clearing a POI route stops its camera travel', () => {
   // Exercise the controller's real transition/update behavior without DOM event setup.
   const controller = Object.create(FirstPersonController.prototype);

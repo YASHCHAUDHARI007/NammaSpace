@@ -76,6 +76,16 @@ export class CollisionSystem {
     return true;
   }
 
+  isSegmentWalkable(a, b, clearance) {
+    // shortcut: sample clearance every 5 mm; use swept-circle geometry for sub-centimeter calibration.
+    const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.005));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      if (!this.isPointWalkable(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, clearance)) return false;
+    }
+    return true;
+  }
+
   /**
    * Resolve player movement from `currentPos` to `desiredPos` with smooth sliding
    * along room walls and furniture AABBs.
@@ -217,25 +227,27 @@ export class CollisionSystem {
     };
 
     // Map valid world endpoints to nearby walkable grid cells.
-    const findNearestWalkableCell = (origin) => {
-      if (isCellFree(origin.gx, origin.gz)) return origin;
+    const findNearestWalkableCell = (origin, point) => {
+      const reachable = (gx, gz) => isCellFree(gx, gz) &&
+        this.isSegmentWalkable(point, toWorld(gx, gz), clearance);
+      if (reachable(origin.gx, origin.gz)) return origin;
       for (let radius = 1; radius <= 8; radius++) {
         for (let dx = -radius; dx <= radius; dx++) {
           for (let dz = -radius; dz <= radius; dz++) {
             const nx = origin.gx + dx;
             const nz = origin.gz + dz;
-            if (isCellFree(nx, nz)) {
+            if (reachable(nx, nz)) {
               return { gx: nx, gz: nz };
             }
           }
         }
       }
-      return origin;
+      return null;
     };
 
-    const startCell = findNearestWalkableCell(toGrid(startXZ[0], startXZ[1]));
-    const goalCell = findNearestWalkableCell(toGrid(goalXZ[0], goalXZ[1]));
-    if (!isCellFree(startCell.gx, startCell.gz) || !isCellFree(goalCell.gx, goalCell.gz)) return null;
+    const startCell = findNearestWalkableCell(toGrid(startXZ[0], startXZ[1]), startXZ);
+    const goalCell = findNearestWalkableCell(toGrid(goalXZ[0], goalXZ[1]), goalXZ);
+    if (!startCell || !goalCell) return null;
 
     const key = (gx, gz) => gz * cols + gx;
     const startKey = key(startCell.gx, startCell.gz);
@@ -294,11 +306,11 @@ export class CollisionSystem {
           curr = cameFrom.get(curr);
         }
         rawPath.reverse();
-        if (this.isPointWalkable(startXZ[0], startXZ[1], clearance)) {
+        if (startXZ[0] === goalXZ[0] && startXZ[1] === goalXZ[1]) {
           rawPath[0] = [startXZ[0], startXZ[1]];
-        }
-        if (this.isPointWalkable(goalXZ[0], goalXZ[1], clearance)) {
-          rawPath[rawPath.length - 1] = [goalXZ[0], goalXZ[1]];
+        } else {
+          rawPath.unshift([startXZ[0], startXZ[1]]);
+          rawPath.push([goalXZ[0], goalXZ[1]]);
         }
 
         const smoothed = this.smoothPath(rawPath, clearance);
@@ -324,6 +336,7 @@ export class CollisionSystem {
         const nx = cx + dx;
         const nz = cz + dz;
         if (!isCellFree(nx, nz)) continue;
+        if (!this.isSegmentWalkable(toWorld(cx, cz), toWorld(nx, nz), clearance)) continue;
 
         // Prevent corner cutting on diagonal moves
         if (dx !== 0 && dz !== 0) {
@@ -351,27 +364,13 @@ export class CollisionSystem {
   smoothPath(rawPoints, clearance) {
     if (rawPoints.length <= 2) return rawPoints;
 
-    const hasLineOfSight = (pA, pB) => {
-      const dist = Math.hypot(pB[0] - pA[0], pB[1] - pA[1]);
-      const steps = Math.max(2, Math.ceil(dist / 0.08));
-      for (let i = 1; i < steps; i++) {
-        const t = i / steps;
-        const x = pA[0] + (pB[0] - pA[0]) * t;
-        const z = pA[1] + (pB[1] - pA[1]) * t;
-        if (!this.isPointWalkable(x, z, clearance)) {
-          return false;
-        }
-      }
-      return true;
-    };
-
     const smoothed = [rawPoints[0]];
     let anchorIdx = 0;
 
     while (anchorIdx < rawPoints.length - 1) {
       let furthestVisible = anchorIdx + 1;
       for (let testIdx = rawPoints.length - 1; testIdx > anchorIdx + 1; testIdx--) {
-        if (hasLineOfSight(rawPoints[anchorIdx], rawPoints[testIdx])) {
+        if (this.isSegmentWalkable(rawPoints[anchorIdx], rawPoints[testIdx], clearance)) {
           furthestVisible = testIdx;
           break;
         }

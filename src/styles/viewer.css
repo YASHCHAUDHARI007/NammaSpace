@@ -1209,6 +1209,22 @@
 }
 
 @media (max-width: 640px) {
+  .header-cluster {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .scene-selector-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .scene-select {
+    width: 100%;
+    min-width: 0;
+  }
+
   .welcome-title {
     font-size: 28px;
   }
