@@ -1,4 +1,7 @@
+'use client';
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Layers,
   Upload,
@@ -13,13 +16,14 @@ import WelcomeOverlay from './components/WelcomeOverlay.jsx';
 import ViewerControls from './components/ViewerControls.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
-import SceneViewer from './viewer/SceneViewer.jsx';
 import {
   SCENES,
   DEFAULT_SCENE_ID,
   DEFAULT_STANDING_HEIGHT,
   getSceneList
 } from './config/scenes.js';
+
+const SceneViewer = dynamic(() => import('./viewer/SceneViewer.jsx'), { ssr: false });
 
 export default function App() {
   const viewerRef = useRef(null);

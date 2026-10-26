@@ -2,7 +2,7 @@
 ### *Your space, reimagined.*
 **IIT Bombay Techfest 2026–27 | Indoor 3D Digital Twin & Spatial Navigation Platform**
 
-**Namma Space** is a web-based indoor spatial computing platform that converts smartphone-captured indoor environments into interactive, navigable 3D digital twins. Built with **React**, **Vite**, and **Three.js**, it pairs a modular 3D asset ingestion layer (`.glb` meshes and `.splat` 3D Gaussian Splats) with genuine first-person kinematics, Circle-vs-AABB sliding collision physics, and obstacle-aware A* floor pathfinding.
+**Namma Space** is a web-based indoor spatial computing platform for viewing smartphone-captured indoor environments as interactive, navigable 3D digital twins. Built with **Next.js App Router**, **React**, and **Three.js**, it pairs a modular 3D asset ingestion layer (`.glb` meshes and `.splat` 3D Gaussian Splats) with first-person movement, Circle-vs-AABB sliding collision physics, and obstacle-aware A* floor pathfinding.
 
 ---
 
@@ -29,6 +29,9 @@
 
 ```text
 src/
+  app/
+    layout.jsx           # HTML shell, global CSS, metadata, fonts, and theme color
+    page.jsx             # Server-rendered home route
   components/
     Header.jsx            # Brand bar, scene switcher, POI search, collider & SOP toggles
     WelcomeOverlay.jsx    # "Step inside." entry modal with provenance & control guide
@@ -46,8 +49,8 @@ src/
   styles/
     global.css            # Design tokens (Warm Ivory, Deep Forest Green, Muted Sage, Charcoal)
     viewer.css            # Translucent glass overlays, typography, responsive & mobile rules
-  App.jsx                 # Application state & layout orchestrator
-  main.jsx                # React root mount
+  App.jsx                 # Client-side application state & layout orchestrator
+next.config.mjs           # Next.js and output tracing configuration
 public/
   models/
     sample-room-scan.glb  # Generated glTF 2.0 demonstration mesh for pipeline verification
@@ -64,21 +67,22 @@ docs/
 ## 3. Local Setup & Commands
 
 ### Prerequisites
-- **Node.js** `>= 18.0.0` and **npm** `>= 9.0.0`
+- **Node.js** `>= 18.18.0` and **npm** `>= 9.0.0`
 
 ### Install & Run Development Server
 ```bash
 npm ci
 npm run dev
 ```
-Open `http://localhost:5173` in Chrome, Edge, Firefox, or Safari.
+Open `http://localhost:3000` in Chrome, Edge, Firefox, or Safari.
 
-### Production Build & Local Preview
+### Tests, Production Build & Startup
 ```bash
-npm run build
 npm test
-npm run preview
+npm run build
+npm run start
 ```
+The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser. The existing styles, scene registry, and assets remain in place.
 
 ---
 
@@ -92,12 +96,12 @@ npm run preview
 
 ---
 
-## 5. Deployment (Vercel / Netlify)
+## 5. Deployment
 
-The project builds to a static Vite bundle in `dist/` and includes [`vercel.json`](./vercel.json) for SPA routing.
+Next.js writes its production output to `.next/`. The old Vite SPA rewrite was removed because it would route Next.js assets and pages to a nonexistent `index.html`.
 
-- **Vercel:** Run `npx vercel` or connect the Git repository with Build Command `npm run build` and Output Directory `dist`.
-- **Netlify:** Set Build Command to `npm run build` and Publish Directory to `dist`.
+- **Vercel:** Import the repository as a Next.js project. Use `npm ci` and `npm run build`; keep the framework's default output settings.
+- **Other Node hosts:** Run `npm ci`, `npm run build`, then `npm run start`. Use a Next.js-compatible platform integration when deploying to a managed static host.
 
 ---
 
