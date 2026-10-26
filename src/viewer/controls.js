@@ -259,6 +259,10 @@ export class FirstPersonController {
     this.camera.quaternion.setFromEuler(this.euler);
   }
 
+  cancelTransition() {
+    this.activeTransition = null;
+  }
+
   /**
    * Smoothly transition camera to a waypoint and look at a 3D target (used by POI selection).
    */

@@ -22,6 +22,7 @@ import { loadSpatialScene, disposeSpatialScene } from './sceneLoader.js';
 const SceneViewer = forwardRef(function SceneViewer(
   {
     sceneConfig,
+    reloadToken,
     moveSpeed,
     showCollisionBounds,
     activePoi,
@@ -47,9 +48,11 @@ const SceneViewer = forwardRef(function SceneViewer(
   const routeGroupRef = useRef(null);
   const hoveredPoiRef = useRef(null);
   const sceneConfigRef = useRef(sceneConfig);
+  const showCollisionBoundsRef = useRef(showCollisionBounds);
   const loadedSceneIdRef = useRef(null);
   const callbacksRef = useRef({});
   sceneConfigRef.current = sceneConfig;
+  showCollisionBoundsRef.current = showCollisionBounds;
   callbacksRef.current = { onLockChange, onLoadStart, onLoadProgress, onLoadSuccess, onLoadError, onSelectPoi, onRouteComputed, onTelemetryUpdate };
 
   const [hoveredPoi, setHoveredPoi] = useState(null);
@@ -69,7 +72,8 @@ const SceneViewer = forwardRef(function SceneViewer(
       controllerRef.current.setPose(position, yaw, pitch);
     },
     focusOnPoi(poi, shouldTeleport = false) {
-      if (!controllerRef.current || !collisionRef.current || !poi) return;
+      if (!controllerRef.current || !collisionRef.current || !poi ||
+          loadedSceneIdRef.current !== sceneConfigRef.current?.id) return;
       const camPos = stageRef.current?.camera?.position;
       let route = null;
       if (camPos && poi.waypoint) {
@@ -85,6 +89,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       }
     },
     clearRoute() {
+      controllerRef.current?.cancelTransition();
       drawRoute([]);
       callbacksRef.current.onRouteComputed?.(null);
     },
@@ -257,11 +262,19 @@ const SceneViewer = forwardRef(function SceneViewer(
 
     async function switchScene() {
       callbacksRef.current.onLoadStart?.();
+      controller.cancelTransition();
       loadedSceneIdRef.current = null;
       hoveredPoiRef.current = null;
       setHoveredPoi(null);
       drawRoute([]);
       callbacksRef.current.onRouteComputed?.(null);
+
+      // Remove visuals tied to the previous scene before the next asset loads.
+      if (debugBoundsGroupRef.current) {
+        stage.scene.remove(debugBoundsGroupRef.current);
+        disposeObject3D(debugBoundsGroupRef.current);
+        debugBoundsGroupRef.current = null;
+      }
 
       // Dispose previous scene geometry
       if (currentSceneGroupRef.current) {
@@ -308,7 +321,7 @@ const SceneViewer = forwardRef(function SceneViewer(
           disposeObject3D(debugBoundsGroupRef.current);
           debugBoundsGroupRef.current = null;
         }
-        if (showCollisionBounds) {
+        if (showCollisionBoundsRef.current) {
           const debugVisuals = collision.createDebugVisuals();
           stage.scene.add(debugVisuals);
           debugBoundsGroupRef.current = debugVisuals;
@@ -329,7 +342,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       cancelled = true;
       abortController.abort();
     };
-  }, [sceneConfig]);
+  }, [sceneConfig, reloadToken]);
 
   // 4. Toggle Collision Wireframe Overlay
   useEffect(() => {
@@ -343,7 +356,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       debugBoundsGroupRef.current = null;
     }
 
-    if (showCollisionBounds) {
+    if (showCollisionBounds && loadedSceneIdRef.current === sceneConfig?.id) {
       const debugVisuals = collision.createDebugVisuals();
       stage.scene.add(debugVisuals);
       debugBoundsGroupRef.current = debugVisuals;

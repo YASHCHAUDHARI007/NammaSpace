@@ -96,7 +96,7 @@ async function loadProceduralDemoScene(sceneConfig) {
  */
 async function loadGlbMeshScene(sceneConfig, onProgress) {
   if (!sceneConfig.assetUrl) {
-    throw new Error('GLB scene configuration is missing `assetUrl`. Place your .glb file in public/models/.');
+    throw new Error('glTF scene configuration is missing `assetUrl`. Add a .glb or .gltf asset URL.');
   }
 
   const gltf = await new Promise((resolve, reject) => {
@@ -122,7 +122,7 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
       (err) => {
         reject(
           new Error(
-            `Failed to load GLB asset from "${sceneConfig.assetUrl}". Verify the file exists in public/models/ and is a valid binary glTF 2.0 (.glb) model. (${err?.message || 'Loader error'})`
+            `Failed to load glTF asset "${sceneConfig.name || sceneConfig.assetUrl}". Verify the URL or local file is valid glTF 2.0 (.glb or .gltf). Local .gltf imports need embedded buffers and textures; otherwise provide those files at resolvable URLs. (${err?.message || 'Loader error'})`
           )
         );
       }

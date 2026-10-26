@@ -91,7 +91,7 @@ The App Router prerenders the page shell. The interactive application is a Clien
 1. **Capture the Room:** Follow [`docs/capture-sop.md`](./docs/capture-sop.md) to record overlapping perimeter and interior passes using a smartphone.
 2. **Reconstruct to `.glb` or `.splat`:** Follow [`docs/reconstruction-workflow.md`](./docs/reconstruction-workflow.md) using Polycam, Luma AI, RealityCapture, or COLMAP + Nerfstudio.
 3. **Load into Namma Space:**
-   - **Quick Browser Test:** Click **Import Asset** in the bottom-left Scene Information panel and select your `.glb` or `.splat` file.
+   - **Quick Browser Test:** Click **Import Asset** in the bottom-left Scene Information panel and select a `.glb`, `.splat`, or self-contained `.gltf` file. A `.gltf` that references separate buffers or textures needs those files at resolvable URLs; for local import, package the scene as `.glb` instead.
    - **Permanent Configuration:** Copy your file into `public/models/` or `public/scenes/` and add an entry in [`src/config/scenes.js`](./src/config/scenes.js).
 
 ---

@@ -32,6 +32,7 @@ export default function App() {
 
   const [customScenes, setCustomScenes] = useState({});
   const [activeSceneId, setActiveSceneId] = useState(DEFAULT_SCENE_ID);
+  const [sceneReloadToken, setSceneReloadToken] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showGuideDrawer, setShowGuideDrawer] = useState(false);
 
@@ -126,7 +127,7 @@ export default function App() {
       sceneType:
         mode === 'splat'
           ? 'Imported 3D Gaussian Splat (.splat)'
-          : 'Imported glTF/GLB Mesh (.glb)',
+          : `Imported glTF Mesh (.${ext})`,
       reconstructionStatus: 'User-imported asset; capture provenance and spatial calibration unverified',
       isReconstructed: false,
       assetUrl: objectUrl,
@@ -192,6 +193,7 @@ export default function App() {
       <SceneViewer
         ref={viewerRef}
         sceneConfig={activeScene}
+        reloadToken={sceneReloadToken}
         moveSpeed={moveSpeed}
         showCollisionBounds={showCollisionBounds}
         activePoi={activePoi}
@@ -337,15 +339,16 @@ export default function App() {
           errorMessage={loadError}
           sceneConfig={activeScene}
           onRetry={() => {
-            // Re-trigger scene load
-            const id = activeSceneId;
             setLoadError(null);
-            setActiveSceneId('');
-            window.setTimeout(() => setActiveSceneId(id), 20);
+            setSceneReloadToken((token) => token + 1);
           }}
           onFallbackToDemo={() => {
             setLoadError(null);
-            setActiveSceneId(DEFAULT_SCENE_ID);
+            if (activeSceneId === DEFAULT_SCENE_ID) {
+              setSceneReloadToken((token) => token + 1);
+            } else {
+              setActiveSceneId(DEFAULT_SCENE_ID);
+            }
           }}
         />
       )}

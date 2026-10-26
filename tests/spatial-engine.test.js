@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
+import { FirstPersonController } from '../src/viewer/controls.js';
 import { SCENES } from '../src/config/scenes.js';
 import { validateSplatBuffer } from '../src/viewer/sceneLoader.js';
 
@@ -86,4 +87,22 @@ test('unreachable and invalid goals return no route; smoothing stays clear', () 
       assert.equal(open.isPointWalkable(x, z, 0.42), true);
     }
   }
+});
+
+test('clearing a POI route stops its camera travel', () => {
+  // Exercise the controller's real transition/update behavior without DOM event setup.
+  const controller = Object.create(FirstPersonController.prototype);
+  controller.camera = new THREE.PerspectiveCamera();
+  controller.camera.position.set(0, 1.68, 3);
+  controller.standingHeight = 1.68;
+  controller.keys = { forward: false, backward: false, left: false, right: false };
+
+  controller.transitionToTarget([0, 1], [0, 1, 0], 1);
+  controller.update(0.1);
+  const stoppedAt = controller.camera.position.clone();
+  assert.ok(stoppedAt.z < 3, 'the camera began traveling before route clear');
+
+  controller.cancelTransition();
+  controller.update(0.1);
+  assert.ok(controller.camera.position.equals(stoppedAt), 'the camera stayed in place after route clear');
 });
