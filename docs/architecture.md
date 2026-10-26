@@ -20,7 +20,7 @@ flowchart TD
         P["Procedural Baseline (createScene.js)"] --> D
     end
 
-    subgraph Runtime["3. Browser Spatial Engine (React + Three.js)"]
+    subgraph Runtime["3. Next.js App Router + Browser Spatial Engine (React + Three.js)"]
         D --> E["sceneLoader.js (Modular Asset Pipeline)"]
         E --> F["SceneViewer.jsx (WebGL Lifecycle & Raycasting)"]
         F --> G["controls.js (FirstPersonController + PointerLock)"]
@@ -32,6 +32,8 @@ flowchart TD
 ---
 
 ## 2. Module Responsibilities
+
+The App Router root layout owns metadata, font links, and global CSS. Its server-rendered home route renders `src/App.jsx` as a Client Component. `App.jsx` loads `SceneViewer.jsx` dynamically with server rendering disabled so Three.js, WebGL, pointer lock, and splat workers initialize only in the browser. The existing scene registry and spatial engine modules stay in place.
 
 | File | Responsibility |
 | :--- | :--- |
