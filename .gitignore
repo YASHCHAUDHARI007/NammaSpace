@@ -26,11 +26,14 @@ dist-ssr
 
 # Python environment and cache
 .venv/
+.venv-ns/
+.tools/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 
 # Reconstruction outputs
+assets/
 outputs/
 logs/
 datasets/
@@ -42,6 +45,7 @@ data/
 *.glb
 *.gltf
 *.splat
+!public/scenes/classroom-metric.splat
 *.ckpt
 *.pth
 *.pt

@@ -47,7 +47,10 @@ export default function App() {
   const [moveSpeed, setMoveSpeed] = useState(3.2);
   const [showCollisionBounds, setShowCollisionBounds] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [cameraCoords, setCameraCoords] = useState({ x: '0.00', y: '1.68', z: '3.10' });
+  const [cameraCoords, setCameraCoords] = useState(() => {
+    const [x, y, z] = SCENES[DEFAULT_SCENE_ID].spawn.position;
+    return { x: x.toFixed(2), y: y.toFixed(2), z: z.toFixed(2) };
+  });
 
   // Round 2 Extension: Active POI & Obstacle-Aware A* Route
   const [activePoi, setActivePoi] = useState(null);
@@ -349,10 +352,10 @@ export default function App() {
           }}
           onFallbackToDemo={() => {
             setLoadError(null);
-            if (activeSceneId === DEFAULT_SCENE_ID) {
+            if (activeSceneId === 'demo-studio') {
               setSceneReloadToken((token) => token + 1);
             } else {
-              setActiveSceneId(DEFAULT_SCENE_ID);
+              setActiveSceneId('demo-studio');
             }
           }}
         />

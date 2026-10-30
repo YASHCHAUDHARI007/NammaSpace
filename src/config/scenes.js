@@ -14,6 +14,78 @@ export const DEFAULT_STANDING_HEIGHT = 1.68; // meters (average human eye level)
 export const PLAYER_RADIUS = 0.36; // meters horizontal collision cylinder radius
 
 export const SCENES = {
+  'classroom-pilot': {
+    id: 'classroom-pilot',
+    name: 'Captured Classroom — Metric Pilot',
+    shortLabel: 'Real Classroom Capture',
+    mode: 'splat',
+    sceneType: '3D Gaussian Splatting (.splat)',
+    reconstructionStatus: 'Real Sony camera capture; screen-scaled pilot, not a phone capture',
+    navigationStatus: 'pilot',
+    isReconstructed: true,
+    eyeHeight: 1.29,
+    assetUrl: '/scenes/classroom-metric.splat',
+    dimensionsLabel: 'Screen 2.38m × 1.825m; room limits estimated',
+    description:
+      'Reconstructed from 275 video frames. The projector sets the metric scale. Floor alignment comes from sparse 3D points. Collision boxes approximate the stage, cabinets, and table banks; the centre aisle is walkable.',
+    calibration: {
+      captureSource: 'Sony ILCE-7SM3 video frames from the supplied assets folder',
+      upAxis: 'Y',
+      metersPerAssetUnit: 1,
+      originDescription: 'Estimated floor below the projector screen bottom centre',
+      referenceDistanceMeters: 1.825,
+      referenceDistanceAssetUnits: 1.825
+    },
+    spawn: {
+      position: [0.72, 1.29, 5.82],
+      yaw: 0.248,
+      pitch: -0.171
+    },
+    roomBounds: {
+      minX: -4.2,
+      maxX: 4.4,
+      minZ: -0.45,
+      maxZ: 12.2,
+      floorY: 0,
+      ceilingY: 3.4
+    },
+    colliders: [
+      { id: 'stage-upper', label: 'Raised stage', minX: -2.7, maxX: 2.7, minY: 0, maxY: 0.6, minZ: -0.35, maxZ: 1.65 },
+      { id: 'stage-steps', label: 'Stage steps', minX: -3.2, maxX: 3.2, minY: 0, maxY: 0.38, minZ: 1.65, maxZ: 2.25 },
+      { id: 'whiteboard', label: 'Left whiteboard', minX: -4.05, maxX: -3.4, minY: 0, maxY: 2.1, minZ: 0.7, maxZ: 2.25 },
+      { id: 'front-cabinet', label: 'Right cabinet', minX: 3.25, maxX: 4.2, minY: 0, maxY: 1.1, minZ: 0.3, maxZ: 2.25 },
+      { id: 'tables-left-1', label: 'Left front tables', minX: -3.55, maxX: -0.65, minY: 0, maxY: 0.95, minZ: 2.8, maxZ: 3.8 },
+      { id: 'tables-right-1', label: 'Right front tables', minX: 1.5, maxX: 4.05, minY: 0, maxY: 0.95, minZ: 2.8, maxZ: 3.8 },
+      { id: 'tables-left-2', label: 'Left middle tables', minX: -3.55, maxX: -0.65, minY: 0, maxY: 0.95, minZ: 4.3, maxZ: 5.2 },
+      { id: 'tables-right-2', label: 'Right middle tables', minX: 1.5, maxX: 4.05, minY: 0, maxY: 0.95, minZ: 4.3, maxZ: 5.2 },
+      { id: 'tables-left-3', label: 'Left middle tables', minX: -3.55, maxX: -0.65, minY: 0, maxY: 0.95, minZ: 5.8, maxZ: 6.7 },
+      { id: 'tables-right-3', label: 'Right middle tables', minX: 1.5, maxX: 4.05, minY: 0, maxY: 0.95, minZ: 5.8, maxZ: 6.7 },
+      { id: 'tables-left-4', label: 'Left rear tables', minX: -3.55, maxX: -0.65, minY: 0, maxY: 0.95, minZ: 7.3, maxZ: 8.2 },
+      { id: 'tables-right-4', label: 'Right rear tables', minX: 1.5, maxX: 4.05, minY: 0, maxY: 0.95, minZ: 7.3, maxZ: 8.2 },
+      { id: 'rear-benches-left', label: 'Left rear seating', minX: -3.55, maxX: -0.65, minY: 0, maxY: 1.2, minZ: 8.8, maxZ: 11.5 },
+      { id: 'rear-benches-right', label: 'Right rear seating', minX: 1.5, maxX: 4.05, minY: 0, maxY: 1.2, minZ: 8.8, maxZ: 11.5 }
+    ],
+    pois: [
+      {
+        id: 'pilot-projector',
+        name: 'Measured Projector Screen',
+        category: 'Calibration',
+        description: 'The screen is 1.825 m high and approximately 2.40 m wide. It sets the scene scale.',
+        position: [0, 1.75, 0.05],
+        waypoint: [0.65, 2.8],
+        lookAt: [0, 1.75, 0.05]
+      },
+      {
+        id: 'pilot-rear-seating',
+        name: 'Rear Seating',
+        category: 'Classroom',
+        description: 'View the tiered rear seating from the clear centre aisle.',
+        position: [-2.5, 1.1, 10.2],
+        waypoint: [0.55, 10.0],
+        lookAt: [-2.5, 1.1, 10.2]
+      }
+    ]
+  },
   'demo-studio': {
     id: 'demo-studio',
     name: 'Namma Studio — Procedural Baseline',
@@ -282,7 +354,7 @@ export const SCENES = {
   }
 };
 
-export const DEFAULT_SCENE_ID = 'demo-studio';
+export const DEFAULT_SCENE_ID = 'classroom-pilot';
 
 export function getSceneConfig(sceneId) {
   return SCENES[sceneId] || SCENES[DEFAULT_SCENE_ID];

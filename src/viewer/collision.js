@@ -13,7 +13,7 @@ import { DEFAULT_STANDING_HEIGHT, PLAYER_RADIUS } from '../config/scenes.js';
 export class CollisionSystem {
   constructor(sceneConfig = {}) {
     this.playerRadius = PLAYER_RADIUS;
-    this.standingHeight = DEFAULT_STANDING_HEIGHT;
+    this.standingHeight = sceneConfig.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
     this.roomBounds = sceneConfig.roomBounds || {
       minX: -4.85,
       maxX: 4.85,
@@ -32,6 +32,7 @@ export class CollisionSystem {
    * Update bounds and colliders when switching scenes or loading custom meshes.
    */
   configure(sceneConfig) {
+    this.standingHeight = sceneConfig.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
     if (sceneConfig.roomBounds) {
       this.roomBounds = { ...sceneConfig.roomBounds };
     }

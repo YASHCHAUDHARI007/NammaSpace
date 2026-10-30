@@ -56,9 +56,11 @@ public/
     sample-room-scan.glb  # Generated glTF 2.0 demonstration mesh for pipeline verification
   scenes/
     sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
+    classroom-metric.splat # Screen-scaled Sony camera capture pilot (558,361 splats)
 docs/
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
+  classroom-capture-pilot-2026-10-30.md # Results and limits of the real-camera pilot
   architecture.md         # System architecture & Round 2 extension design
 ```
 
@@ -89,7 +91,7 @@ The App Router prerenders the page shell. The interactive application is a Clien
 ## 4. How to Capture & Import Your Own Reconstructed Room
 
 1. **Capture the Room:** Follow [`docs/capture-sop.md`](./docs/capture-sop.md) to record overlapping perimeter and interior passes using a smartphone.
-2. **Reconstruct to `.glb` or `.splat`:** Follow [`docs/reconstruction-workflow.md`](./docs/reconstruction-workflow.md) using Polycam, Luma AI, RealityCapture, or COLMAP + Nerfstudio.
+2. **Choose and test a reconstruction route:** Read the [3D reconstruction research](./docs/3d-reconstruction-research.md), then follow the [reconstruction workflow](./docs/reconstruction-workflow.md) to produce a textured `.glb` or convert an exported Gaussian PLY to standard `.splat`.
 3. **Load into Namma Space:**
    - **Quick Browser Test:** Click **Import Asset** in the bottom-left Scene Information panel and select a `.glb`, `.splat`, or self-contained `.gltf` file. A `.gltf` that references separate buffers or textures needs those files at resolvable URLs; for local import, package the scene as `.glb` instead.
    - **Permanent Configuration:** Copy your file into `public/models/` or `public/scenes/` and add an entry in [`src/config/scenes.js`](./src/config/scenes.js).
@@ -107,6 +109,6 @@ Next.js writes its production output to `.next/`. The old Vite SPA rewrite was r
 
 ## Asset format and spatial calibration
 
-The included GLB and `.splat` assets are generated demonstration fixtures. They are not evidence of a smartphone reconstruction. The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
+The sample GLB and `sample-capture.splat` are generated demonstration fixtures. The `classroom-metric.splat` asset comes from the supplied Sony camera videos. It is a real-capture pilot, not evidence of a smartphone reconstruction. See the [pilot report](./docs/classroom-capture-pilot-2026-10-30.md) for calibration, movement checks, and limits. The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
 
 Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.

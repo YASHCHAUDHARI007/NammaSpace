@@ -37,6 +37,12 @@ test('sample .splat is well formed and accepted by installed parser', () => {
   assert.throws(() => validateSplatBuffer(bytes.slice(0, 31)), /multiple of 32/);
 });
 
+test('metric classroom asset contains valid Gaussian records', () => {
+  const file = readFileSync(new URL('../public/scenes/classroom-metric.splat', import.meta.url));
+  const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  assert.equal(validateSplatBuffer(bytes), 558361);
+});
+
 test('scene ingestion rejects missing or invalid navigation calibration before loading', async () => {
   for (const scene of Object.values(SCENES)) assert.doesNotThrow(() => validateSceneConfig(scene));
   const missingBounds = { ...SCENES['reconstructed-glb'], roomBounds: undefined };
@@ -75,6 +81,21 @@ test('walls stop movement at player radius and furniture cannot be tunneled thro
   const table = collision.resolveMovement(vec(0, 1), vec(0, -1));
   assert.ok(table.position.z >= 0.5 + collision.playerRadius - 1e-4);
   assert.equal(table.collided, true);
+});
+
+test('captured classroom supports a continuous aisle and blocks the raised stage', () => {
+  const collision = new CollisionSystem(SCENES['classroom-pilot']);
+  const spawn = vec(0.65, 5.8);
+  const towardScreen = collision.resolveMovement(spawn, vec(0.65, 2.8));
+  assert.equal(towardScreen.collided, false);
+  const towardRear = collision.resolveMovement(spawn, vec(0.55, 10));
+  assert.equal(towardRear.collided, false);
+  const stage = collision.resolveMovement(towardScreen.position, vec(0.65, 0.2));
+  assert.equal(stage.collided, true);
+  assert.ok(stage.position.z >= 2.25 + collision.playerRadius - 0.02);
+  const table = collision.resolveMovement(vec(0.65, 4.7), vec(-2, 4.7));
+  assert.equal(table.collided, true);
+  assert.ok(table.position.x >= -0.65 + collision.playerRadius - 0.02);
 });
 
 test('diagonal movement slides around corners without entering furniture', () => {

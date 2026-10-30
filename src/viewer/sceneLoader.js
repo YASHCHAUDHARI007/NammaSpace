@@ -37,8 +37,12 @@ export function validateSceneConfig(scene) {
     throw new Error('Procedural demo geometry cannot be declared a real reconstruction.');
   }
   const b = scene.roomBounds;
+  const eyeHeight = scene.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
+  if (!Number.isFinite(eyeHeight) || eyeHeight <= 0.5 || eyeHeight >= 2.2) {
+    throw new Error('Invalid eyeHeight: set a plausible positive camera height in meters.');
+  }
   if (!b || !['minX', 'maxX', 'minZ', 'maxZ', 'floorY', 'ceilingY'].every((key) => Number.isFinite(b[key])) ||
-      b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= DEFAULT_STANDING_HEIGHT) {
+      b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= eyeHeight) {
     throw new Error('Invalid roomBounds: set finite X/Z limits, floorY=0, and ceilingY above standing eye height after aligning the asset to meters and Y-up.');
   }
   if (!Array.isArray(scene.colliders)) {
@@ -51,9 +55,9 @@ export function validateSceneConfig(scene) {
     }
   }
   const vector = (value, length) => Array.isArray(value) && value.length === length && value.every(Number.isFinite);
-  if (!vector(scene.spawn?.position, 3) || scene.spawn.position[1] !== DEFAULT_STANDING_HEIGHT ||
+  if (!vector(scene.spawn?.position, 3) || scene.spawn.position[1] !== eyeHeight ||
       !Number.isFinite(scene.spawn.yaw) || !Number.isFinite(scene.spawn.pitch)) {
-    throw new Error(`Invalid spawn: set finite [x, ${DEFAULT_STANDING_HEIGHT}, z], yaw, and pitch in the aligned world frame.`);
+    throw new Error(`Invalid spawn: set finite [x, ${eyeHeight}, z], yaw, and pitch in the aligned world frame.`);
   }
   if (!Array.isArray(scene.pois)) throw new Error('Missing pois: provide an array, even when empty.');
   const collision = new CollisionSystem(scene);
