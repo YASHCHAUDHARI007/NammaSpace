@@ -25,7 +25,7 @@ export class FirstPersonController {
     this.pointerLock.minPolarAngle = Math.PI * 0.12; // prevent flipping overhead
     this.pointerLock.maxPolarAngle = Math.PI * 0.88; // prevent flipping underfoot
 
-    this.moveSpeed = 3.2; // meters per second (configurable)
+    this.moveSpeed = 3.2; // world units per second (configurable)
     this.standingHeight = DEFAULT_STANDING_HEIGHT;
 
     this.keys = {

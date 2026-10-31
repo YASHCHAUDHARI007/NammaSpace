@@ -47,7 +47,10 @@ export default function App() {
   const [moveSpeed, setMoveSpeed] = useState(3.2);
   const [showCollisionBounds, setShowCollisionBounds] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [cameraCoords, setCameraCoords] = useState({ x: '0.00', y: '1.68', z: '3.10' });
+  const [cameraCoords, setCameraCoords] = useState(() => {
+    const [x, y, z] = SCENES[DEFAULT_SCENE_ID].spawn.position;
+    return { x: x.toFixed(2), y: y.toFixed(2), z: z.toFixed(2) };
+  });
 
   // Round 2 Extension: Active POI & Obstacle-Aware A* Route
   const [activePoi, setActivePoi] = useState(null);
@@ -265,7 +268,7 @@ export default function App() {
                 A* Route: {activeRoute.poi.name}
               </span>
               <span className="route-active-sub">
-                Walkable path: {activeRoute.distanceMeters}m ({activeRoute.points.length} waypoints)
+                Walkable path: {activeRoute.distanceMeters}{activeScene.calibration?.scaleType === 'relative' ? ' scene units' : ' m'} ({activeRoute.points.length} waypoints)
               </span>
             </div>
             <button
@@ -295,14 +298,14 @@ export default function App() {
           <div className="telemetry-cell">
             <span className="telemetry-label">Collision Volumes</span>
             <span className="telemetry-val">
-              {sceneStats?.collisionCount ?? activeScene.colliders?.length ?? 0} AABBs + Walls
+              {sceneStats?.collisionCount ?? activeScene.colliders?.length ?? 0} AABBs + {activeScene.roomBoundsKnown === false ? 'Preview Limits' : 'Walls'}
             </span>
           </div>
 
           <div className="telemetry-cell">
-            <span className="telemetry-label">Standing Eye Pos</span>
+            <span className="telemetry-label">Camera Position</span>
             <span className="telemetry-val">
-              {cameraCoords.x}, {cameraCoords.y}, {cameraCoords.z}m
+              {cameraCoords.x}, {cameraCoords.y}, {cameraCoords.z}{activeScene.calibration?.scaleType === 'relative' ? ' units' : ' m'}
             </span>
           </div>
 
@@ -349,10 +352,10 @@ export default function App() {
           }}
           onFallbackToDemo={() => {
             setLoadError(null);
-            if (activeSceneId === DEFAULT_SCENE_ID) {
+            if (activeSceneId === 'demo-studio') {
               setSceneReloadToken((token) => token + 1);
             } else {
-              setActiveSceneId(DEFAULT_SCENE_ID);
+              setActiveSceneId('demo-studio');
             }
           }}
         />
@@ -394,21 +397,20 @@ export default function App() {
               <div className="drawer-section">
                 <h4>
                   <Camera size={15} />
-                  <span>1. Smartphone Capture SOP</span>
+                  <span>1. One-Video Capture SOP</span>
                 </h4>
                 <ul>
                   <li>
-                    <strong>Lighting &amp; Prep:</strong> Turn on all indoor lights, open blinds for
-                    diffuse illumination, and remove moving people/pets.
+                    Keep the room static. Turn on steady lights. Keep people and moving objects
+                    out of the capture.
                   </li>
                   <li>
-                    <strong>Camera Settings:</strong> Record 4K @ 30/60fps (or RAW photo burst) with
-                    ultra-wide/1x lens locked; disable auto-exposure flicker and motion blur.
+                    Record one continuous video with one lens and steady exposure. This case study
+                    used <code>C5304.MP4</code> at 3840 × 2160 and 50 fps.
                   </li>
                   <li>
-                    <strong>Perimeter Loop + Inside-Out Sweep:</strong> Walk slowly along the room
-                    perimeter facing inward (70%+ frame overlap) at two heights (chest level &amp;
-                    eye level), then capture central furniture islands.
+                    Move slowly with overlap and lateral translation. Show walls, floor edges,
+                    furniture, and the room centre from several positions. Avoid fast pans.
                   </li>
                 </ul>
               </div>
@@ -416,20 +418,20 @@ export default function App() {
               <div className="drawer-section">
                 <h4>
                   <Cpu size={15} />
-                  <span>2. External 3D Reconstruction Tools</span>
+                  <span>2. Reconstruct the Video</span>
                 </h4>
                 <p>
-                  Process extracted frames (`ffmpeg -i room.mp4 -vf fps=3 frames/frame_%04d.jpg`) in
-                  an established reconstruction suite:
+                  Extract frames from the first 55 seconds at 2 fps. Keep only a continuous camera
+                  path, then train a Gaussian splat from those frames.
                 </p>
                 <ul>
                   <li>
-                    <strong>Mesh (.glb):</strong> Polycam (LiDAR/Photo mode), RealityCapture, or
-                    Nerfstudio (`ns-export poisson`) → Export binary `.glb` to `public/models/`.
+                    <strong>Camera poses:</strong> PyCOLMAP registered 99 of 110 candidate frames.
+                    The last 11 did not join the continuous path and were excluded.
                   </li>
                   <li>
-                    <strong>3D Gaussian Splat (.splat):</strong> Luma AI, Postshot, or Nerfstudio
-                    `splatfacto` → Export `.splat` to `public/scenes/`.
+                    <strong>Appearance:</strong> Nerfstudio Splatfacto trained for 10,000 steps.
+                    Its Gaussian PLY was aligned to the floor and converted to a 32-byte `.splat`.
                   </li>
                 </ul>
               </div>
@@ -437,18 +439,16 @@ export default function App() {
               <div className="drawer-section">
                 <h4>
                   <FileCode size={15} />
-                  <span>3. Registering Your Scene in Code</span>
+                  <span>3. Scale and Navigation Limits</span>
                 </h4>
                 <p>
-                  Use <strong>Import Asset</strong> for an uncalibrated preview. To enable trustworthy
-                  navigation, align the asset to meters with a Y-up floor at zero, then register its
-                  measured spawn, room bounds, colliders, POIs, and capture evidence in
-                  <code>src/config/scenes.js</code>.
+                  The visible screen sets an arbitrary scale of two scene units. No physical room
+                  or screen size was measured. The walking limits and furniture collision boxes
+                  are visual estimates. Check the floor and all routes before relying on them.
                 </p>
                 <p style={{ fontSize: '12px', color: '#5b635e' }}>
-                  Full detailed guides are located in <code>docs/capture-sop.md</code>,{' '}
-                  <code>docs/reconstruction-workflow.md</code>, <code>docs/real-scan-pilot.md</code>, and{' '}
-                  <code>docs/architecture.md</code>.
+                  Read <code>docs/single-video-reconstruction.md</code> for the exact commands,
+                  results, source checks, and limitations.
                 </p>
               </div>
             </div>
