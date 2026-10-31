@@ -10,24 +10,100 @@
  *   pipeline with a separate proxy collision layout (since splats are volumetric Gaussians without mesh faces).
  */
 
-export const DEFAULT_STANDING_HEIGHT = 1.68; // meters (average human eye level)
-export const PLAYER_RADIUS = 0.36; // meters horizontal collision cylinder radius
+export const DEFAULT_STANDING_HEIGHT = 1.68; // world units; metric only in calibrated metric scenes
+export const PLAYER_RADIUS = 0.36; // world-unit horizontal collision cylinder radius
 
 export const SCENES = {
+  'classroom-single-video': {
+    id: 'classroom-single-video',
+    name: 'Captured Classroom — One Video',
+    shortLabel: 'One-Video Classroom',
+    mode: 'splat',
+    sceneType: '3D Gaussian Splatting (.splat)',
+    reconstructionStatus: 'Reconstructed only from C5304.MP4; relative scale; room dimensions unknown',
+    navigationStatus: 'pilot',
+    roomBoundsKnown: false,
+    showCalibrationStage: false,
+    isReconstructed: true,
+    eyeHeight: 1.47,
+    assetUrl: '/scenes/classroom-single-video.splat',
+    dimensionsLabel: 'Room dimensions unknown',
+    description:
+      'This model uses 99 registered frames from one continuous Sony video. The screen and floor set an arbitrary scene scale. Navigation limits and furniture boxes are visual estimates, not measured room dimensions.',
+    calibration: {
+      captureSource: 'assets/C5304.MP4, first 55 seconds; 99 valid frames at 2 fps',
+      upAxis: 'Y',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      originDescription: 'Fitted floor below the visible projector screen',
+      referenceObject: 'Outer projector-screen border in three frames of the same video',
+      referenceHeightSceneUnits: 2
+    },
+    spawn: {
+      position: [-5.03, 1.47, 8.91],
+      yaw: -0.012,
+      pitch: -0.09
+    },
+    // These visual estimates are used for the walking preview only.
+    roomBounds: {
+      minX: -6.2,
+      maxX: 4.9,
+      minZ: -0.8,
+      maxZ: 15.6,
+      floorY: 0,
+      ceilingY: 4.5
+    },
+    colliders: [
+      { id: 'video-stage', label: 'Front stage', minX: -2.8, maxX: 2.8, minY: 0, maxY: 0.65, minZ: -0.3, maxZ: 1.35 },
+      { id: 'video-stage-steps', label: 'Stage steps', minX: -3.0, maxX: 3.0, minY: 0, maxY: 0.35, minZ: 1.35, maxZ: 1.95 },
+      { id: 'video-left-front', label: 'Left front tables', minX: -3.9, maxX: -0.8, minY: 0, maxY: 0.95, minZ: 2.8, maxZ: 4.0 },
+      { id: 'video-right-front', label: 'Right front tables', minX: 0.8, maxX: 2.9, minY: 0, maxY: 0.95, minZ: 2.8, maxZ: 4.0 },
+      { id: 'video-left-middle-1', label: 'Left middle tables', minX: -3.9, maxX: -0.8, minY: 0, maxY: 0.95, minZ: 4.5, maxZ: 5.7 },
+      { id: 'video-right-middle-1', label: 'Right middle tables', minX: 0.8, maxX: 2.9, minY: 0, maxY: 0.95, minZ: 4.5, maxZ: 5.7 },
+      { id: 'video-left-middle-2', label: 'Left middle tables', minX: -3.9, maxX: -0.8, minY: 0, maxY: 0.95, minZ: 6.2, maxZ: 7.4 },
+      { id: 'video-right-middle-2', label: 'Right middle tables', minX: 0.8, maxX: 2.9, minY: 0, maxY: 0.95, minZ: 6.2, maxZ: 7.4 },
+      { id: 'video-left-middle-3', label: 'Left middle tables', minX: -3.9, maxX: -0.8, minY: 0, maxY: 0.95, minZ: 7.9, maxZ: 9.1 },
+      { id: 'video-right-middle-3', label: 'Right middle tables', minX: 0.8, maxX: 2.9, minY: 0, maxY: 0.95, minZ: 7.9, maxZ: 9.1 },
+      { id: 'video-left-rear', label: 'Left rear tables', minX: -3.9, maxX: -0.8, minY: 0, maxY: 0.95, minZ: 9.6, maxZ: 11.5 },
+      { id: 'video-right-rear', label: 'Right rear tables', minX: 0.8, maxX: 2.9, minY: 0, maxY: 0.95, minZ: 9.6, maxZ: 11.5 }
+    ],
+    pois: [
+      {
+        id: 'video-screen',
+        name: 'Projector Screen',
+        category: 'Classroom',
+        description: 'Visible screen used for relative orientation. Its physical size was not measured for this model.',
+        position: [0, 1.8, 0],
+        waypoint: [0, 2.5],
+        lookAt: [0, 1.8, 0]
+      },
+      {
+        id: 'video-rear',
+        name: 'Rear Aisle',
+        category: 'Classroom',
+        description: 'A view toward the rear of the classroom.',
+        position: [0, 1.5, 13.5],
+        waypoint: [0, 12.4],
+        lookAt: [0, 1.5, 13.5]
+      }
+    ]
+  },
   'classroom-pilot': {
     id: 'classroom-pilot',
-    name: 'Captured Classroom — Metric Pilot',
+    name: 'Captured Classroom — Screen-Scaled Pilot',
     shortLabel: 'Real Classroom Capture',
     mode: 'splat',
     sceneType: '3D Gaussian Splatting (.splat)',
-    reconstructionStatus: 'Real Sony camera capture; screen-scaled pilot, not a phone capture',
+    reconstructionStatus: 'Real Sony camera capture; room dimensions unknown; visual ghosting remains',
     navigationStatus: 'pilot',
+    roomBoundsKnown: false,
+    showCalibrationStage: false,
     isReconstructed: true,
     eyeHeight: 1.29,
     assetUrl: '/scenes/classroom-metric.splat',
-    dimensionsLabel: 'Screen 2.38m × 1.825m; room limits estimated',
+    dimensionsLabel: 'Room dimensions unknown',
     description:
-      'Reconstructed from 275 video frames. The projector sets the metric scale. Floor alignment comes from sparse 3D points. Collision boxes approximate the stage, cabinets, and table banks; the centre aisle is walkable.',
+      'The current splat uses 275 frames from the supplied Sony videos. The still photos are visual references. The measured projector screen sets an approximate scale. Room limits and furniture collision boxes are estimates.',
     calibration: {
       captureSource: 'Sony ILCE-7SM3 video frames from the supplied assets folder',
       upAxis: 'Y',
@@ -41,6 +117,7 @@ export const SCENES = {
       yaw: 0.248,
       pitch: -0.171
     },
+    // These values limit pilot navigation. They are not measured room dimensions.
     roomBounds: {
       minX: -4.2,
       maxX: 4.4,
@@ -354,7 +431,7 @@ export const SCENES = {
   }
 };
 
-export const DEFAULT_SCENE_ID = 'classroom-pilot';
+export const DEFAULT_SCENE_ID = 'classroom-single-video';
 
 export function getSceneConfig(sceneId) {
   return SCENES[sceneId] || SCENES[DEFAULT_SCENE_ID];

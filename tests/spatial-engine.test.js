@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
 import { FirstPersonController } from '../src/viewer/controls.js';
-import { SCENES } from '../src/config/scenes.js';
+import { SCENES, DEFAULT_SCENE_ID } from '../src/config/scenes.js';
 import { validateSplatBuffer, validateSceneConfig, loadSpatialScene } from '../src/viewer/sceneLoader.js';
 
 const room = {
@@ -41,6 +41,19 @@ test('metric classroom asset contains valid Gaussian records', () => {
   const file = readFileSync(new URL('../public/scenes/classroom-metric.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
   assert.equal(validateSplatBuffer(bytes), 558361);
+});
+
+test('default one-video room has valid splats and explicit relative scale', () => {
+  assert.equal(DEFAULT_SCENE_ID, 'classroom-single-video');
+  const scene = SCENES[DEFAULT_SCENE_ID];
+  assert.equal(scene.calibration.scaleType, 'relative');
+  assert.equal(scene.roomBoundsKnown, false);
+  assert.match(scene.calibration.captureSource, /C5304\.MP4/);
+  const file = readFileSync(new URL('../public/scenes/classroom-single-video.splat', import.meta.url));
+  const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  assert.equal(validateSplatBuffer(bytes), 776728);
+  assert.doesNotThrow(() => validateSceneConfig(scene));
+  assert.throws(() => validateSceneConfig({ ...scene, calibration: { ...scene.calibration, scaleType: 'metric' } }), /calibration/);
 });
 
 test('scene ingestion rejects missing or invalid navigation calibration before loading', async () => {
