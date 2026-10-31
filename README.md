@@ -1,20 +1,20 @@
 # NAMMA SPACE
 ### *Your space, reimagined.*
-**IIT Bombay Techfest 2026–27 | Indoor 3D Digital Twin & Spatial Navigation Platform**
+**Indoor 3D reconstruction and spatial navigation**
 
 **Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5304.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes, with first-person movement, preview collision boxes, and A* floor routes. The classroom's physical dimensions are unknown; its navigation scale is relative.
 
-For the Round 1 source, capture SOP, exact pipeline, checks, and known visual limits, see [the one-video reconstruction report](./docs/single-video-reconstruction.md). The [four-page technical abstract](./submission/technical-abstract.pdf) summarizes the result. The [3:34 demonstration](./submission/round1-demonstration.mp4) shows the source, pipeline, and browser walkthrough. The [Round 1 submission check](./submission/round1-readiness.md) tracks each required item and the remaining publication checks.
+Read the [current classroom update](./docs/classroom-project-update.md) for the result, checks, and limits. The [reconstruction report](./docs/single-video-reconstruction.md) gives the capture SOP and full processing steps.
 
-## Round 1 status on `main`
+## Current classroom result
 
-The `main` branch contains the one-video model, viewer code, capture SOP, 24 sample frames, abstract, and demonstration video. The prebuilt model runs without the source recording. Full retraining needs the original 1.5 GB `assets/C5304.MP4`, which is not in Git. Check its SHA-256 in the [reconstruction report](./docs/single-video-reconstruction.md) before retraining.
+The `main` branch contains the one-video model, viewer code, 24 sample frames, and a [3:34 narrated walkthrough](./submission/round1-demonstration.mp4). The prebuilt model runs without the source recording. Full retraining needs the original 1.5 GB `assets/C5304.MP4`, which is not in Git. Check its SHA-256 in the reconstruction report before retraining.
 
-The model still has visible ghosting near the projector screen and in weakly observed views. This repository does not contain a verified public viewer URL or Google Drive submission link. Competition portal submission status is unknown.
+The model still has visible ghosting near the projector screen and in weakly observed views. This repository does not contain a verified hosted viewer URL.
 
 ---
 
-## 1. Key Capabilities (Round 1 + Round 2 Architecture Foundations)
+## Viewer capabilities
 
 - **Three Modular Scene Modes (`src/viewer/sceneLoader.js`):**
   1. **Procedural Baseline (`mode: 'demo'`):** A manually built 10m × 8m × 3.2m reference interior. This separate scene is a viewer fixture, not part of the one-video classroom reconstruction.
@@ -33,7 +33,7 @@ The model still has visible ghosting near the projector screen and in weakly obs
 
 ---
 
-## 2. Project Structure
+## Repository map
 
 ```text
 src/
@@ -67,21 +67,18 @@ public/
     classroom-metric.splat # Screen-scaled Sony camera capture pilot (558,361 splats)
     classroom-single-video.splat # Default one-video classroom (776,728 splats)
 docs/
+  classroom-project-update.md # Current result, checks, and limits
   single-video-reconstruction.md # Source, capture SOP, pipeline, checks, and limits
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
   classroom-capture-pilot-2026-10-30.md # Results and limits of the real-camera pilot
-  architecture.md         # System architecture & Round 2 extension design
+  architecture.md         # System architecture and future extensions
 tests/data/single-video-C5304/ # 24 frames derived from the one source video
-submission/
-  technical-abstract.pdf # Four-page Round 1 abstract
-  round1-demonstration.mp4 # Narrated 3:34 capture and walkthrough
-  round1-readiness.md   # Competition criteria and submission status
 ```
 
 ---
 
-## 3. Local Setup & Commands
+## Local setup
 
 ### Prerequisites
 - **Node.js** `>= 18.18.0` and **npm** `>= 9.0.0`
@@ -103,7 +100,7 @@ The App Router prerenders the page shell. The interactive application is a Clien
 
 ---
 
-## 4. How to Capture & Import Your Own Reconstructed Room
+## Capture and import another room
 
 1. **Capture the Room:** Follow [`docs/capture-sop.md`](./docs/capture-sop.md) to record overlapping perimeter and interior passes using a smartphone.
 2. **Choose and test a reconstruction route:** Read the [3D reconstruction research](./docs/3d-reconstruction-research.md), then follow the [reconstruction workflow](./docs/reconstruction-workflow.md) to produce a textured `.glb` or convert an exported Gaussian PLY to standard `.splat`.
@@ -113,7 +110,7 @@ The App Router prerenders the page shell. The interactive application is a Clien
 
 ---
 
-## 5. Deployment
+## Deployment
 
 Next.js writes its production output to `.next/`. No public viewer deployment is verified in this repository.
 
