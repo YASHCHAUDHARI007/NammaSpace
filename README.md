@@ -6,6 +6,12 @@
 
 For the Round 1 source, capture SOP, exact pipeline, checks, and known visual limits, see [the one-video reconstruction report](./docs/single-video-reconstruction.md). The [four-page technical abstract](./submission/technical-abstract.pdf) summarizes the result. The [3:34 demonstration](./submission/round1-demonstration.mp4) shows the source, pipeline, and browser walkthrough. The [Round 1 submission check](./submission/round1-readiness.md) tracks each required item and the remaining publication checks.
 
+## Round 1 status on `main`
+
+The `main` branch contains the one-video model, viewer code, capture SOP, 24 sample frames, abstract, and demonstration video. The prebuilt model runs without the source recording. Full retraining needs the original 1.5 GB `assets/C5304.MP4`, which is not in Git. Check its SHA-256 in the [reconstruction report](./docs/single-video-reconstruction.md) before retraining.
+
+The model still has visible ghosting near the projector screen and in weakly observed views. This repository does not contain a verified public viewer URL or Google Drive submission link. Competition portal submission status is unknown.
+
 ---
 
 ## 1. Key Capabilities (Round 1 + Round 2 Architecture Foundations)
@@ -93,7 +99,7 @@ npm test
 npm run build
 npm run start
 ```
-The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser. The existing styles, scene registry, and assets remain in place.
+The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser.
 
 ---
 
@@ -109,7 +115,7 @@ The App Router prerenders the page shell. The interactive application is a Clien
 
 ## 5. Deployment
 
-Next.js writes its production output to `.next/`. The old Vite SPA rewrite was removed because it would route Next.js assets and pages to a nonexistent `index.html`.
+Next.js writes its production output to `.next/`. No public viewer deployment is verified in this repository.
 
 - **Vercel:** Import the repository as a Next.js project. Use `npm ci` and `npm run build`; keep the framework's default output settings.
 - **Other Node hosts:** Run `npm ci`, `npm run build`, then `npm run start`. Use a Next.js-compatible platform integration when deploying to a managed static host.
