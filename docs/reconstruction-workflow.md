@@ -2,7 +2,7 @@
 ## Namma Space — From Smartphone Footage to Interactive Browser Twin
 
 > **Engineering Transparency Note:**
-> Photogrammetric Structure-from-Motion (COLMAP), Neural Radiance Fields (NeRF), and 3D Gaussian Splatting (3DGS) training require CUDA/Metal GPU compute and take 5–45 minutes per room. Namma Space does **not** fabricate an in-browser AI reconstruction API. Instead, it provides a modular, web runtime (`src/viewer/sceneLoader.js`) that ingests standardized `.glb` and `.splat` outputs from established reconstruction pipelines.
+> Namma Space does **not** reconstruct a scene in the browser. Its web runtime (`src/viewer/sceneLoader.js`) loads `.glb` and standard 32-byte `.splat` outputs from external reconstruction tools. Processing time and hardware needs depend on the tool, image set, and machine. Record them during a real pilot. See the [current research note](3d-reconstruction-research.md) for the method comparison and evidence plan.
 
 ---
 
@@ -10,30 +10,26 @@
 
 You can generate compatible 3D assets using any of the following tools:
 
-### Option A: Polycam / Luma AI (Fastest Smartphone-to-Web Workflow)
+### Option A: Hosted phone capture to textured GLB
 1. Capture the room following [`docs/capture-sop.md`](./capture-sop.md).
-2. Process the capture in **Luma AI** (Gaussian Splat + Mesh) or **Polycam** (LiDAR / Photo Mode).
-3. Export:
-   - **GLB Mesh:** Download `.glb` → Copy to `public/models/<your-scene>.glb`.
-   - **Gaussian Splat:** Download `.splat` → Copy to `public/scenes/<your-scene>.splat`.
+2. Use a service that can produce a textured indoor mesh and lets this account export `.glb`. [Polycam documents a GLB export workflow](https://learn.poly.cam/hc/en-us/articles/42497420365716-How-to-Optimize-Your-Captures-in-Blender); check the capture mode and export access before relying on it.
+3. Download the `.glb` and place it in `public/models/`. Keep the raw capture, service settings, export file, and attribution details.
 
-### Option B: Open-Source Desktop Pipeline (COLMAP + Nerfstudio / Splatfacto)
-If running locally on an NVIDIA GPU workstation or Google Colab:
+### Option B: Open-source Gaussian splat pipeline (COLMAP + Nerfstudio Splatfacto)
+Run this on a supported CUDA workstation. [Nerfstudio documents](https://docs.nerf.studio/quickstart/custom_dataset.html) video processing and [Splatfacto training](https://docs.nerf.studio/nerfology/methods/splat.html):
 ```bash
-# 1. Extract frames and run COLMAP camera pose estimation
 ns-process-data video --data raw_capture.mp4 --output-dir processed_room --num-frames-target 250
-
-# 2A. Train 3D Gaussian Splatting (splatfacto)
 ns-train splatfacto --data processed_room
-
-# Export .splat or .ply and convert to standard 32-byte .splat format
-ns-export gaussian-splat --load-config outputs/.../config.yml --output-dir public/scenes/
-
-# 2B. Or train baked mesh / Poisson surface reconstruction for .glb
-ns-export poisson --load-config outputs/.../config.yml --output-dir public/models/
+ns-export gaussian-splat --load-config outputs/.../config.yml --output-dir exports/splat
 ```
+The `250` frame target is an example, not a required count. Inspect the selected frames and camera registration. `ns-export gaussian-splat` writes a **Gaussian PLY**, not `.splat`. Convert the exported PLY with the [antimatter15 `convert.py` tool](https://github.com/antimatter15/splat/blob/main/convert.py) to a standard `.splat`, then place it in `public/scenes/`. Verify the output in the browser. Preserve the PLY and conversion settings.
 
-### Option C: RealityCapture / Blender Cleanup (Recommended for Metric Alignment)
+Splatfacto does not provide a direct textured GLB export. Nerfstudio's [Poisson export](https://docs.nerf.studio/quickstart/export_geometry.html) needs a model that predicts normals, such as a suitable Nerfacto configuration; its mesh output also needs conversion to GLB. Do not point `ns-export poisson` at `public/models/` and assume it has written a browser-ready GLB.
+
+### Option C: Open-source textured mesh pipeline (COLMAP MVS)
+Use [COLMAP](https://colmap.github.io/tutorial) to estimate poses, dense points, and a mesh. The [current COLMAP CLI guide](https://colmap.github.io/cli.html) documents a separate `mesh_texturer` step that makes UVs and a texture atlas from undistorted images. Check that the installed version supports it. Alternatively, [OpenMVS](https://github.com/cdcseacave/openMVS/blob/develop/docs/wiki/Usage.md) documents mesh texturing and GLB export. Inspect and clean the result, align it to meters and Y-up, then export a self-contained GLB with [Blender](https://docs.blender.org/manual/en/latest/addons/scene_gltf2.html) if needed.
+
+### Final alignment in Blender
 1. Import the reconstructed `.glb` or `.obj` into **Blender**.
 2. Rotate the model so the floor is level with Blender's `XY` ground plane (which exports to glTF `+Y Up` / `XZ` floor automatically).
 3. Translate the room center to `(0, 0, 0)` with the floor surface at elevation `0.0m`.

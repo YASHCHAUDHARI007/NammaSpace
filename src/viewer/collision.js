@@ -13,7 +13,8 @@ import { DEFAULT_STANDING_HEIGHT, PLAYER_RADIUS } from '../config/scenes.js';
 export class CollisionSystem {
   constructor(sceneConfig = {}) {
     this.playerRadius = PLAYER_RADIUS;
-    this.standingHeight = DEFAULT_STANDING_HEIGHT;
+    this.standingHeight = sceneConfig.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
+    this.roomBoundsKnown = sceneConfig.roomBoundsKnown !== false;
     this.roomBounds = sceneConfig.roomBounds || {
       minX: -4.85,
       maxX: 4.85,
@@ -32,6 +33,8 @@ export class CollisionSystem {
    * Update bounds and colliders when switching scenes or loading custom meshes.
    */
   configure(sceneConfig) {
+    this.standingHeight = sceneConfig.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
+    this.roomBoundsKnown = sceneConfig.roomBoundsKnown !== false;
     if (sceneConfig.roomBounds) {
       this.roomBounds = { ...sceneConfig.roomBounds };
     }
@@ -98,10 +101,11 @@ export class CollisionSystem {
     const r = this.playerRadius;
     const b = this.roomBounds;
     const hitAt = (x, z) => {
-      if (x < b.minX + r) return 'West Perimeter Wall';
-      if (x > b.maxX - r) return 'East Perimeter Wall';
-      if (z < b.minZ + r) return 'North Perimeter Wall';
-      if (z > b.maxZ - r) return 'South Perimeter Wall';
+      const boundary = this.roomBoundsKnown ? 'Perimeter Wall' : 'Preview Limit';
+      if (x < b.minX + r) return `West ${boundary}`;
+      if (x > b.maxX - r) return `East ${boundary}`;
+      if (z < b.minZ + r) return `North ${boundary}`;
+      if (z > b.maxZ - r) return `South ${boundary}`;
       for (const box of this.colliders) {
         const closestX = Math.max(box.minX, Math.min(x, box.maxX));
         const closestZ = Math.max(box.minZ, Math.min(z, box.maxZ));
@@ -130,7 +134,7 @@ export class CollisionSystem {
       else z = nextZ;
     }
     if (!hitLabel && (Math.abs(x - desiredPos.x) > 1e-6 || Math.abs(z - desiredPos.z) > 1e-6)) {
-      hitLabel = 'Perimeter Wall';
+      hitLabel = this.roomBoundsKnown ? 'Perimeter Wall' : 'Preview Limit';
     }
     return {
       position: new THREE.Vector3(x, this.standingHeight, z),

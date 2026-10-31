@@ -23,8 +23,8 @@ export default function WelcomeOverlay({
             Step inside.
           </h1>
           <p className="welcome-subtitle">
-            Explore smartphone-captured indoor spaces and architectural baselines in real time with
-            first-person collision physics and obstacle-aware pathfinding.
+            Explore this room reconstructed from one continuous video. Walk through the 3D view,
+            inspect the navigation preview, and try obstacle-aware routes.
           </p>
         </div>
 

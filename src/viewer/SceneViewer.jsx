@@ -303,6 +303,7 @@ const SceneViewer = forwardRef(function SceneViewer(
 
         // Configure collision bounds + any dynamically extracted mesh AABBs
         collision.configure(sceneConfig);
+        controller.standingHeight = collision.standingHeight;
         if (result.extractedColliders?.length > 0) {
           collision.addMeshColliders(result.extractedColliders);
         }
