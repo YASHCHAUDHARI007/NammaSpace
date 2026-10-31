@@ -2,21 +2,23 @@
 ### *Your space, reimagined.*
 **IIT Bombay Techfest 2026–27 | Indoor 3D Digital Twin & Spatial Navigation Platform**
 
-**Namma Space** is a web-based indoor spatial computing platform for viewing smartphone-captured indoor environments as interactive, navigable 3D digital twins. Built with **Next.js App Router**, **React**, and **Three.js**, it pairs a modular 3D asset ingestion layer (`.glb` meshes and `.splat` 3D Gaussian Splats) with first-person movement, Circle-vs-AABB sliding collision physics, and obstacle-aware A* floor pathfinding.
+**Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5304.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes, with first-person movement, preview collision boxes, and A* floor routes. The classroom's physical dimensions are unknown; its navigation scale is relative.
+
+For the Round 1 source, capture SOP, exact pipeline, checks, and known visual limits, see [the one-video reconstruction report](./docs/single-video-reconstruction.md). The [four-page technical abstract](./submission/technical-abstract.pdf) summarizes the result. The [3:34 demonstration](./submission/round1-demonstration.mp4) shows the source, pipeline, and browser walkthrough. The [Round 1 submission check](./submission/round1-readiness.md) tracks each required item and the remaining publication checks.
 
 ---
 
 ## 1. Key Capabilities (Round 1 + Round 2 Architecture Foundations)
 
 - **Three Modular Scene Modes (`src/viewer/sceneLoader.js`):**
-  1. **Procedural Baseline (`mode: 'demo'`):** Full-scale `10m × 8m × 3.2m` reference interior built with Three.js geometry (work table, modular L-sofa, coffee table, walnut storage cabinet, central calibration plinth, and east telemetry console). Clearly labeled as manual baseline geometry—never misrepresented as AI output.
+  1. **Procedural Baseline (`mode: 'demo'`):** A manually built 10m × 8m × 3.2m reference interior. This separate scene is a viewer fixture, not part of the one-video classroom reconstruction.
   2. **Reconstructed Mesh Pipeline (`mode: 'glb'`):** Loads standard binary glTF 2.0 (`.glb` / `.gltf`) scans via Three.js `GLTFLoader` + `DRACOLoader` with real byte-transfer progress and explicitly configured AABB collision volumes.
   3. **3D Gaussian Splat Pipeline (`mode: 'splat'`):** Validates standard 32-byte `.splat` files, then renders them through `@mkkellogg/gaussian-splats-3d` with anisotropic scale, quaternion rotation, RGBA opacity, depth sorting, and explicit proxy collision bounds.
 - **Instant Local Asset Import:** Click **"Import Asset"** (or **"Import .glb / .splat"** on the Welcome screen) to load any `.glb`, `.gltf`, or `.splat` file directly from your device without modifying code.
 - **First-Person Spatial Controller (`src/viewer/controls.js`):**
   - `PointerLockControls` mouse look + drag-to-look fallback and mobile touch D-pad.
   - Normalized horizontal movement vector so diagonal `W+A` / `W+D` movement is never faster than straight movement.
-  - Standing eye-height constraint (`1.68m`) and configurable walking speed (`Slow 2.0m/s`, `Normal 3.2m/s`, `Fast 4.8m/s`, plus `Shift` pace boost).
+  - Configurable walking speed and a standing eye height. The classroom reports position and route length in scene units because its physical scale is unknown.
   - Automatic key release on `ESC`, pointer-lock exit, window blur, or tab switch.
 - **Deterministic Collision & Obstacle-Aware A* Wayfinding (`src/viewer/collision.js`):**
   - Circle-vs-AABB horizontal collision resolution with smooth wall and furniture sliding.
@@ -57,11 +59,18 @@ public/
   scenes/
     sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
     classroom-metric.splat # Screen-scaled Sony camera capture pilot (558,361 splats)
+    classroom-single-video.splat # Default one-video classroom (776,728 splats)
 docs/
+  single-video-reconstruction.md # Source, capture SOP, pipeline, checks, and limits
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
   classroom-capture-pilot-2026-10-30.md # Results and limits of the real-camera pilot
   architecture.md         # System architecture & Round 2 extension design
+tests/data/single-video-C5304/ # 24 frames derived from the one source video
+submission/
+  technical-abstract.pdf # Four-page Round 1 abstract
+  round1-demonstration.mp4 # Narrated 3:34 capture and walkthrough
+  round1-readiness.md   # Competition criteria and submission status
 ```
 
 ---
@@ -109,6 +118,8 @@ Next.js writes its production output to `.next/`. The old Vite SPA rewrite was r
 
 ## Asset format and spatial calibration
 
-The sample GLB and `sample-capture.splat` are generated demonstration fixtures. The `classroom-metric.splat` asset comes from the supplied Sony camera videos. It is a real-capture pilot, not evidence of a smartphone reconstruction. See the [pilot report](./docs/classroom-capture-pilot-2026-10-30.md) for calibration, movement checks, and limits. The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
+The sample GLB and `sample-capture.splat` are generated demonstration fixtures. The default `classroom-single-video.splat` uses only `C5304.MP4`. The older `classroom-metric.splat` is a separate multi-video pilot; see the [pilot report](./docs/classroom-capture-pilot-2026-10-30.md). The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
+
+The one-video classroom's physical dimensions are unknown. Its screen height is set to two arbitrary scene units. The navigation limits and furniture collision boxes are preview estimates, and some ghosting remains. The quality review and limits are recorded in the [one-video report](./docs/single-video-reconstruction.md).
 
 Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.

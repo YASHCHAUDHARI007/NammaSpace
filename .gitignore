@@ -49,7 +49,6 @@ data/
 *.splat
 !public/scenes/classroom-metric.splat
 !public/scenes/classroom-single-video.splat
-submission/round1-demonstration.mp4
 *.ckpt
 *.pth
 *.pt
