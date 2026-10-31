@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Namma Space — Round 1 Technical Abstract</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #172922; font-family: Arial, Helvetica, sans-serif; font-size: 10.2pt; line-height: 1.42; }
+  .page { width: 210mm; height: 297mm; padding: 15mm 17mm 14mm; page-break-after: always; position: relative; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  .top { display:flex; justify-content:space-between; align-items:center; border-bottom: 1.6px solid #2c6c51; padding-bottom: 5mm; margin-bottom: 8mm; color:#2c6c51; font-size:8pt; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .footer { position:absolute; left:17mm; right:17mm; bottom:10mm; border-top:1px solid #c7d4cc; padding-top:3mm; display:flex; justify-content:space-between; gap:4mm; color:#587064; font-size:8pt; overflow-wrap:anywhere; }
+  h1 { font-size:30pt; line-height:1.05; margin:0 0 4mm; letter-spacing:-.04em; }
+  h2 { font-size:17pt; line-height:1.15; margin:0 0 5mm; letter-spacing:-.02em; }
+  h3 { font-size:11pt; margin:6mm 0 2mm; color:#245e44; }
+  p { margin:0 0 3.8mm; }
+  ul, ol { padding-left:5mm; margin:0 0 4mm; }
+  li { margin-bottom:2.2mm; }
+  .lead { font-size:12pt; color:#315744; max-width:165mm; }
+  .badge { color:#215a3c; background:#e9f4ed; border:1px solid #b6d7c0; padding:1.2mm 3mm; border-radius:8mm; font-size:8pt; font-weight:700; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+  .card { background:#f3f7f3; border:1px solid #d9e4da; border-radius:2mm; padding:4mm; }
+  .card strong { color:#245e44; }
+  .stat { font-size:18pt; font-weight:700; line-height:1.1; color:#194b34; }
+  .small { font-size:8.8pt; color:#466052; }
+  .flow { display:flex; gap:2mm; align-items:stretch; margin:6mm 0; }
+  .flow div { flex:1; background:#eaf2ec; padding:3mm 2mm; text-align:center; font-size:8pt; font-weight:700; border-radius:2mm; }
+  .flow span { display:flex; align-items:center; color:#628473; }
+  table { width:100%; border-collapse:collapse; margin:3mm 0 5mm; font-size:8.7pt; }
+  th, td { padding:2.2mm 2.5mm; text-align:left; vertical-align:top; border-bottom:1px solid #d8e1da; overflow-wrap:anywhere; }
+  th { color:#215a3c; background:#ecf4ee; }
+  .image { width:100%; height:67mm; object-fit:cover; border-radius:2mm; border:1px solid #d9e4da; }
+  .caption { font-size:7.7pt; color:#617365; margin-top:1mm; }
+  .note { border-left:3px solid #4b8763; background:#f3f8f3; padding:3.5mm 4mm; margin:5mm 0; }
+  a { color:#1c6245; text-decoration:none; }
+  code { font-family:Menlo, Consolas, monospace; font-size:8.5pt; }
+</style>
+</head>
+<body>
+<section class="page">
+  <div class="top"><span>Namma Space · IIT Bombay Techfest 2026–27</span><span>Round 1 · Technical abstract</span></div>
+  <span class="badge">ONE SOURCE VIDEO · 3D RECONSTRUCTION · FREE ROAMING</span>
+  <h1 style="margin-top:6mm">A classroom from one continuous video</h1>
+  <p class="lead">We reconstructed an indoor classroom from <strong>C5304.MP4 only</strong>. The browser renders a 3D Gaussian Splat and lets a visitor walk, look, inspect estimated collision boxes, and follow a route to a point of interest.</p>
+  <div class="grid" style="margin:8mm 0 6mm">
+    <div class="card"><div class="stat">99 / 110</div><div>candidate frames on a continuous camera path</div></div>
+    <div class="card"><div class="stat">776,728</div><div>Gaussian splats in a 23.70 MiB browser asset</div></div>
+    <div class="card"><div class="stat">10,000</div><div>Splatfacto training steps completed on the GPU node</div></div>
+    <div class="card"><div class="stat">Unknown</div><div>physical room and screen dimensions; scale is relative</div></div>
+  </div>
+  <h3>System architecture</h3>
+  <div class="flow"><div>One Sony video<br>4K · 50 fps</div><span>→</span><div>Frames<br>2 fps</div><span>→</span><div>PyCOLMAP<br>camera poses</div><span>→</span><div>Nerfstudio<br>Splatfacto</div><span>→</span><div>32-byte .splat<br>WebGL viewer</div></div>
+  <p>The app uses Next.js, React, Three.js, and a Gaussian splat renderer. Scene metadata defines the starting camera, relative scale, preview walk limits, obstacle boxes, and points of interest. The browser keeps reconstruction rendering separate from collision and route logic.</p>
+  <div class="note"><strong>Scope of the claim.</strong> This is a real visual reconstruction with a walking preview. The splat does not supply a measured room mesh. The visible floor plan and collision boxes are estimates.</div>
+  <div class="footer"><span>Source: C5304.MP4 only</span><span>1 / 4</span></div>
+</section>
+
+<section class="page">
+  <div class="top"><span>Capture SOP and source control</span><span>Round 1 · Technical abstract</span></div>
+  <h2>Record a stable, overlapping room pass</h2>
+  <p>The repeat-capture SOP has seven actions. Select one room and record one continuous video with one lens. Keep the scene static and use steady light. Walk slowly with translation. Show the walls, floor edges, ceiling, and furniture from more than one position. Avoid fast pans. Preserve the raw video and its checksum. Accept only a coherent camera path before training.</p>
+  <img class="image" src="source-frame-C5304.jpg" alt="Frame from the source classroom video">
+  <div class="caption">Frame 74 from the sole source video. It shows the screen, tables, chairs, floor, and ceiling used for reconstruction.</div>
+  <h3>Actual source and frame selection</h3>
+  <table>
+    <tr><th>Input</th><td><code>assets/C5304.MP4</code>, Sony H.264 video, 3840 × 2160, 50 fps, 60.48 s</td></tr>
+    <tr><th>Integrity</th><td>SHA-256 <code>a1d92c06896efdaa50fc0cac56152ffd3a18e701ad4424e91d0ae75e183ccaf8</code></td></tr>
+    <tr><th>Selection</th><td>First 55 s sampled at 2 fps and resized to 1920 × 1080. This made 110 candidate frames.</td></tr>
+    <tr><th>Excluded</th><td>Frames 100–110 did not join the continuous sequential camera model. They did not enter training.</td></tr>
+  </table>
+  <p>The video was provided before this run. We did not control its original capture settings. We did not use photos, other videos, prior camera poses, or a measured room dimension. The last part of the clip includes a fast pan and was not suitable for a continuous reconstruction.</p>
+  <div class="footer"><span>Sample frames: tests/data/single-video-C5304</span><span>2 / 4</span></div>
+</section>
+
+<section class="page">
+  <div class="top"><span>Reconstruction and quality control</span><span>Round 1 · Technical abstract</span></div>
+  <h2>Reject folded poses before training</h2>
+  <p>PyCOLMAP used sequential SIFT matching and one camera model. It registered 99 frames in one model with 18,500 sparse points. The mean reprojection error was 0.633 pixels. The median adjacent camera step was 0.2433 model units; the maximum was 0.2877. The path passed a step-ratio gate.</p>
+  <p>An exhaustive attempt registered 110 frames but jumped about 9.43 units between frames 99 and 100. A seeded retry still jumped about 8.95 units. We rejected both models. An apparently complete frame count was weaker evidence than a coherent camera trajectory.</p>
+  <h3>Training and export</h3>
+  <ol>
+    <li>Filter the sparse cloud to points seen from at least three accepted frames with at most 2.5 pixels of error. Keep 17,617 starting points.</li>
+    <li>Train Nerfstudio Splatfacto for 10,000 steps. Disable camera optimization and scale regularization for this run.</li>
+    <li>Export the Gaussian PLY. Align it with the floor and the screen observed in three frames of the same video.</li>
+    <li>Remove distant outliers and write 776,728 records in the standard 32-byte <code>.splat</code> layout.</li>
+  </ol>
+  <div class="grid">
+    <div class="card"><strong>Relative scale</strong><br>The marked screen border has a height of two arbitrary scene units. A floor fit sets Y = 0. No real length was measured.</div>
+    <div class="card"><strong>Browser result</strong><br>Chrome loaded the 23.70 MiB asset. The free-roam view and a route to the projector screen worked.</div>
+  </div>
+  <h3>Known visual limits</h3>
+  <p>The central screen and seating are recognizable. Dark gaps, floating detail, and some ghosting remain near view edges and from novel viewpoints. Plain surfaces, reflections, limited coverage, and the rapid pan reduce reliable geometry. Extra training steps cannot create views that the accepted video did not capture.</p>
+  <div class="note">The 0.633-pixel error measures sparse feature fit. It is not a held-out image-quality score. We have no PSNR, SSIM, measured room dimensions, or mobile frame-rate result for this run.</div>
+  <div class="footer"><span>Output SHA-256: e656fe712bdd93e266d980614fa19b90ac92e19f11d5d05b8376e2f640ae946c</span><span>3 / 4</span></div>
+</section>
+
+<section class="page">
+  <div class="top"><span>Web viewer and reproducibility</span><span>Round 1 · Technical abstract</span></div>
+  <h2>Walk through the reconstructed room</h2>
+  <p>The one-video room is the app's default scene. Visitors use WASD or arrow keys to move and the mouse to look. The viewer streams the splat, shows real byte progress, and offers a reset control. It reports camera positions and route lengths in <strong>scene units</strong>, since metric scale is unknown.</p>
+  <p>Search finds the projector screen and rear aisle. A floor-grid A* route avoids the configured obstacle boxes. The <strong>Colliders</strong> control displays those boxes and the preview limits. These proxies are a demonstration layer. They have not been checked against measured room geometry.</p>
+  <h3>Reproduce and inspect</h3>
+  <p>The code repository contains <code>scripts/reconstruct-sfm.py</code>, <code>scripts/check-sfm-trajectory.py</code>, <code>scripts/package-classroom-cluster.py</code>, <code>scripts/calibrate-relative-room.py</code>, and <code>scripts/export-metric-splat.py</code>. It contains 24 sample frames in <code>tests/data/single-video-C5304</code>. The full command sequence and limits are in <code>docs/single-video-reconstruction.md</code>.</p>
+  <div class="card"><code>npm ci</code> → <code>npm test</code> → <code>npm run build</code> → <code>npm run start</code><br><span class="small">Open the local site in a WebGL-capable browser. The 24 sample frames test setup; the full model needs the original source video.</span></div>
+  <h3>Open-source tools and credits</h3>
+  <p>Camera reconstruction: <a href="https://colmap.github.io/">COLMAP / PyCOLMAP</a>. Gaussian training and export: <a href="https://docs.nerf.studio/">Nerfstudio Splatfacto</a> and its gsplat dependency. Viewer: <a href="https://nextjs.org/">Next.js</a>, <a href="https://react.dev/">React</a>, <a href="https://threejs.org/">Three.js</a>, and <a href="https://github.com/mkkellogg/GaussianSplats3D">GaussianSplats3D</a>. Media extraction: <a href="https://ffmpeg.org/">FFmpeg</a>. The app's scene configuration, collision preview, and integration code are in this repository. Each dependency retains its own license.</p>
+  <h3>Submission checks</h3>
+  <table>
+    <tr><th>Ready locally</th><td>One-video 3D asset; free-roam viewer; capture/reconstruction SOP; pipeline checks; sample data; four-page abstract; 3-minute-34-second demonstration video.</td></tr>
+    <tr><th>Must be verified externally</th><td>Public viewer URL, published repository with this version, and an accessible submission folder.</td></tr>
+  </table>
+  <div class="footer"><span>Namma Space · One video, unknown physical dimensions</span><span>4 / 4</span></div>
+</section>
+</body>
+</html>
