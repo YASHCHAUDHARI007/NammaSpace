@@ -134,10 +134,11 @@ def main() -> None:
             "crop_max_scene_units": crop_max.tolist(),
             "max_axis_scale_scene_units": args.max_axis_scale_m,
             "floor_y_scene_units": 0,
-            "screen_width_scene_units": calibration["screen_width_scene_units"],
-            "screen_bottom_height_scene_units": calibration["screen_bottom_height_scene_units"],
             "position_quantiles_scene_units": np.quantile(positions, [0.01, 0.5, 0.99], axis=0).round(3).tolist(),
         })
+        for key in ("screen_width_scene_units", "screen_bottom_height_scene_units", "camera_clearance_scene_units"):
+            if key in calibration:
+                summary[key] = calibration[key]
     args.output.with_suffix(".json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
 
