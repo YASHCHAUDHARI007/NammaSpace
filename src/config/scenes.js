@@ -14,6 +14,47 @@ export const DEFAULT_STANDING_HEIGHT = 1.68; // world units; metric only in cali
 export const PLAYER_RADIUS = 0.36; // world-unit horizontal collision cylinder radius
 
 export const SCENES = {
+  'classroom-c5307-single-video': {
+    id: 'classroom-c5307-single-video',
+    name: 'Captured Classroom — C5307 Video',
+    shortLabel: 'C5307 One-Video Room',
+    mode: 'splat',
+    sceneType: '3D Gaussian Splatting (.splat)',
+    reconstructionStatus: 'Reconstructed only from C5307.MP4; relative scale; partial right-wall coverage',
+    navigationStatus: 'pilot',
+    roomBoundsKnown: false,
+    showCalibrationStage: false,
+    isReconstructed: true,
+    eyeHeight: 1,
+    assetUrl: '/scenes/classroom-c5307-single-video.splat',
+    dimensionsLabel: 'Room dimensions unknown',
+    description:
+      'This model uses 120 frames from the first 15 seconds of one Sony video. The stage, seating, floor, and ceiling are visible. The right wall and some furniture still have ghosting. Scale and walking limits are visual estimates.',
+    calibration: {
+      captureSource: 'assets/C5307.MP4, first 15 seconds; 120 registered frames at 8 fps',
+      upAxis: 'Y',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      originDescription: 'Walking floor fitted to the one-video Gaussian model',
+      referenceObject: 'Median camera clearance above the fitted walking floor',
+      referenceHeightSceneUnits: 1
+    },
+    spawn: {
+      position: [0.025, 1, 2.46],
+      yaw: 0,
+      pitch: -0.04
+    },
+    roomBounds: {
+      minX: -1.6,
+      maxX: 1.6,
+      minZ: 0.6,
+      maxZ: 4.2,
+      floorY: 0,
+      ceilingY: 2.5
+    },
+    colliders: [],
+    pois: []
+  },
   'classroom-c5306-single-video': {
     id: 'classroom-c5306-single-video',
     name: 'Captured Classroom — C5306 Video',
@@ -480,7 +521,7 @@ export const SCENES = {
   }
 };
 
-export const DEFAULT_SCENE_ID = 'classroom-c5306-single-video';
+export const DEFAULT_SCENE_ID = 'classroom-c5307-single-video';
 
 export function getSceneConfig(sceneId) {
   return SCENES[sceneId] || SCENES[DEFAULT_SCENE_ID];
