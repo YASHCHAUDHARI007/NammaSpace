@@ -44,14 +44,14 @@ test('metric classroom asset contains valid Gaussian records', () => {
 });
 
 test('default one-video room has valid splats and explicit relative scale', () => {
-  assert.equal(DEFAULT_SCENE_ID, 'classroom-c5306-single-video');
+  assert.equal(DEFAULT_SCENE_ID, 'classroom-c5307-single-video');
   const scene = SCENES[DEFAULT_SCENE_ID];
   assert.equal(scene.calibration.scaleType, 'relative');
   assert.equal(scene.roomBoundsKnown, false);
-  assert.match(scene.calibration.captureSource, /C5306\.MP4/);
-  const file = readFileSync(new URL('../public/scenes/classroom-c5306-single-video.splat', import.meta.url));
+  assert.match(scene.calibration.captureSource, /C5307\.MP4/);
+  const file = readFileSync(new URL('../public/scenes/classroom-c5307-single-video.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
-  assert.equal(validateSplatBuffer(bytes), 873736);
+  assert.equal(validateSplatBuffer(bytes), 324633);
   assert.doesNotThrow(() => validateSceneConfig(scene));
   assert.throws(() => validateSceneConfig({ ...scene, calibration: { ...scene.calibration, scaleType: 'metric' } }), /calibration/);
 });

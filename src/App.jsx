@@ -444,6 +444,38 @@ export default function App() {
                     </p>
                   </div>
                 </>
+              ) : activeSceneId === 'classroom-c5307-single-video' ? (
+                <>
+                  <div className="drawer-section">
+                    <h4><Camera size={15} /><span>1. Video Source</span></h4>
+                    <p>
+                      This room uses only the first 15 seconds of <code>C5307.MP4</code>.
+                      It does not use still photos or frames from other videos.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
+                    <p>
+                      All 120 frames sampled at 8 fps registered in one camera route.
+                      COLMAP estimated the camera poses. VGGT supplied depth for initial
+                      points. Nerfstudio Splatfacto trained the Gaussian model for 30,000
+                      steps on the NST GPU cluster.
+                    </p>
+                    <p>
+                      The fitted walking floor sets the scene orientation. Camera clearance
+                      sets a relative scale. No physical room size was measured.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
+                    <p>
+                      The stage and central seating are clear from recorded camera positions.
+                      The right wall and some furniture have ghosting or missing detail.
+                      Walking limits are visual estimates. Furniture collision has not
+                      been verified for this scene.
+                    </p>
+                  </div>
+                </>
               ) : (
               <>
               <div className="drawer-section">
