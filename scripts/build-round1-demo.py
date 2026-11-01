@@ -45,8 +45,8 @@ SEGMENTS = [
     dict(kind="viewer", start=104, duration=12,
          speech="Reset returns to the recognizable room. The viewer also shows the source and method in its guide."),
     dict(kind="card", duration=25, heading="RESULT AND LIMITS",
-         lines=["C5306.MP4 only | 198 frames | 873,736 splats", "Viewer and code are local", "Upper walls and unsupported views still need coverage"],
-         speech="The local model and viewer show a clear central room with less ghosting than the earlier trial. Upper surfaces remain incomplete because the video did not observe them well. The technical abstract records the method and limits."),
+         lines=["C5306.MP4 only | 198 frames | 873,736 splats", "Code and model on GitHub main | viewer runs locally", "Upper walls and unsupported views still need coverage"],
+         speech="The model and viewer show a clear central room with less ghosting than the earlier trial. The code and model are on GitHub main. Upper surfaces remain incomplete because the video did not observe them well. The technical abstract records the method and limits."),
 ]
 
 
