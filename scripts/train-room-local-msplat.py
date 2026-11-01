@@ -1,4 +1,4 @@
-"""Train a one-video room dataset on Apple Silicon with resumable checkpoints."""
+"""Train a COLMAP or Nerfstudio room dataset on Apple Silicon with checkpoints."""
 
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ def main() -> None:
     parser.add_argument("--downscale", type=float, default=0.5)
     parser.add_argument("--refine-every", type=int, default=500)
     parser.add_argument("--grad-threshold", type=float, default=0.0005)
+    parser.add_argument("--export-splat", action="store_true",
+                        help="Export a standard .splat file at the final step")
     args = parser.parse_args()
     if args.steps < 1 or args.checkpoint_every < 1:
         parser.error("Step counts must be positive")
@@ -60,6 +62,8 @@ def main() -> None:
                 trainer.save_checkpoint(str(temporary))
                 os.replace(temporary, checkpoint)
                 trainer.export_ply(str(args.output / f"{stem}.ply"))
+                if args.export_splat and previous == args.steps:
+                    trainer.export_splat(str(args.output / f"{stem}.splat"))
                 if dataset.num_test:
                     rgb = np.asarray(trainer.render(0, use_test=True))
                     rgb = np.uint8(np.clip(rgb * 255.0, 0, 255))
