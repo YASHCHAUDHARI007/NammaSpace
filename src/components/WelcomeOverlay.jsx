@@ -13,7 +13,7 @@ export default function WelcomeOverlay({
   const hasObstacleProxies = sceneConfig.colliders?.length > 0;
   const sourceDescription = sceneConfig.id === 'classroom-pilot'
     ? 'Explore this room reconstructed from the supplied videos.'
-    : ['classroom-c5306-single-video', 'classroom-single-video'].includes(sceneConfig.id)
+    : ['classroom-c5306-single-video', 'classroom-c5307-single-video', 'classroom-single-video'].includes(sceneConfig.id)
       ? 'Explore this room reconstructed from one continuous video.'
       : 'Explore this spatial scene.';
 

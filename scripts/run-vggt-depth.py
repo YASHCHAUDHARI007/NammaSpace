@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -21,22 +22,38 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     parser.add_argument("--max-frame", type=int, default=99)
     parser.add_argument("--stride", type=int, default=5)
+    parser.add_argument("--start-index", type=int, default=0)
+    parser.add_argument("--device", choices=("auto", "cuda", "mps", "cpu"), default="auto")
+    parser.add_argument("--weights", type=Path, help="Local VGGT model.pt; otherwise download the official weights")
     args = parser.parse_args()
-    if args.stride < 1 or args.max_frame < 1:
+    if args.stride < 1 or args.max_frame < 1 or args.start_index < 0:
         parser.error("Frame limit and stride must be positive")
-    paths = sorted(args.frames.glob("frame_*.jpg"))[: args.max_frame : args.stride]
+    paths = sorted(args.frames.glob("frame_*.jpg"))[args.start_index : args.max_frame : args.stride]
     if len(paths) < 2:
         parser.error("At least two source frames are required")
 
-    device = torch.device("cuda")
-    if not torch.cuda.is_available():
-        parser.error("VGGT inference must run on the cluster GPU")
+    if args.device == "auto":
+        device_name = "cuda" if torch.cuda.is_available() else (
+            "mps" if torch.backends.mps.is_available() else "cpu"
+        )
+    else:
+        device_name = args.device
+    device = torch.device(device_name)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        parser.error("CUDA is unavailable")
+    if device.type == "mps" and not torch.backends.mps.is_available():
+        parser.error("Apple GPU is unavailable")
     model = VGGT().to(device)
-    model.load_state_dict(torch.hub.load_state_dict_from_url(WEIGHTS, map_location="cpu"))
+    weights = (torch.load(args.weights, map_location="cpu", weights_only=True)
+               if args.weights else torch.hub.load_state_dict_from_url(WEIGHTS, map_location="cpu"))
+    model.load_state_dict(weights)
+    del weights
     model.eval()
     images, coords = load_and_preprocess_images_square([str(path) for path in paths], 518)
     images = images.to(device)[None]
-    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+    precision = (torch.autocast(device.type, dtype=torch.bfloat16)
+                 if device.type in ("cuda", "mps") else nullcontext())
+    with torch.inference_mode(), precision:
         tokens, ps_idx = model.aggregator(images)
         depth, confidence = model.depth_head(tokens, images, ps_idx)
         pose = model.camera_head(tokens)[-1]

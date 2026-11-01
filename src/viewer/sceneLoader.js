@@ -41,6 +41,10 @@ export function validateSceneConfig(scene) {
   if (!Number.isFinite(eyeHeight) || eyeHeight <= 0.5 || eyeHeight >= 2.2) {
     throw new Error('Invalid eyeHeight: set a plausible positive camera height in scene units.');
   }
+  if (scene.cameraFov !== undefined &&
+      (!Number.isFinite(scene.cameraFov) || scene.cameraFov < 30 || scene.cameraFov > 100)) {
+    throw new Error('Invalid cameraFov: set a vertical field of view from 30 to 100 degrees.');
+  }
   if (!b || !['minX', 'maxX', 'minZ', 'maxZ', 'floorY', 'ceilingY'].every((key) => Number.isFinite(b[key])) ||
       b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= eyeHeight) {
     throw new Error('Invalid roomBounds: set finite X/Z limits, floorY=0, and ceilingY above standing eye height after aligning the asset to Y-up.');

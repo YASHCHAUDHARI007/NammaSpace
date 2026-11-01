@@ -1,0 +1,49 @@
+{
+  "reference": "walking floor below the raised stage, fitted only to the source video",
+  "unit_label": "relative scene units",
+  "metric_scale_known": false,
+  "room_dimensions_known": false,
+  "camera_clearance_scene_units": 1.0,
+  "scene_units_per_model_unit": 0.5573046258270609,
+  "viewer_floor_origin_colmap_units": [
+    -0.316765388727543,
+    2.5153763053016784,
+    -3.775255008269491
+  ],
+  "viewer_right_colmap_axis": [
+    -0.9698919784817647,
+    -0.07427166816151883,
+    0.23193376077068392
+  ],
+  "viewer_up_colmap_axis": [
+    0.03210969239421307,
+    -0.9830463530029235,
+    -0.1805237809874399
+  ],
+  "viewer_front_colmap_axis": [
+    0.24140944002063522,
+    -0.16764124539073721,
+    0.9558336126715604
+  ],
+  "floor_fit_sparse_inliers": 6836,
+  "floor_fit_residual_sd_scene_units": 0.007385088690488282,
+  "stage_above_walking_floor_scene_units": 0.27519257520657336,
+  "camera_position_quantiles_scene_units": [
+    [
+      0.063,
+      0.967,
+      -0.25
+    ],
+    [
+      0.424,
+      1.0,
+      2.295
+    ],
+    [
+      1.094,
+      1.058,
+      6.017
+    ]
+  ],
+  "limits": "Scale and horizontal orientation come from one video. No physical dimensions were measured."
+}

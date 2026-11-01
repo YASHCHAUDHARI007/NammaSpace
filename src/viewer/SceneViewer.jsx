@@ -309,6 +309,8 @@ const SceneViewer = forwardRef(function SceneViewer(
         }
 
         // Position camera at scene spawn point
+        stage.camera.fov = sceneConfig.cameraFov ?? 68;
+        stage.camera.updateProjectionMatrix();
         const spawn = sceneConfig.spawn || {
           position: [0, 1.68, 3.0],
           yaw: 0,
