@@ -40,76 +40,73 @@
 <body>
 <section class="page">
   <div class="top"><span>Namma Space · IIT Bombay Techfest 2026–27</span><span>Round 1 · Technical abstract</span></div>
-  <span class="badge">ONE SOURCE VIDEO · 3D RECONSTRUCTION · FREE ROAMING</span>
+  <span class="badge">ONE SOURCE VIDEO · VGGT DEPTH · FREE ROAMING</span>
   <h1 style="margin-top:6mm">A classroom from one continuous video</h1>
-  <p class="lead">We reconstructed an indoor classroom from <strong>C5304.MP4 only</strong>. The browser renders a 3D Gaussian Splat and lets a visitor walk, look, inspect estimated collision boxes, and follow a route to a point of interest.</p>
+  <p class="lead">We reconstructed a classroom from <strong>C5306.MP4 only</strong>. The browser renders a 3D Gaussian Splat. Visitors can walk through the captured aisle, look around, and follow a short route to the front of the room.</p>
   <div class="grid" style="margin:8mm 0 6mm">
-    <div class="card"><div class="stat">99 / 110</div><div>candidate frames on a continuous camera path</div></div>
-    <div class="card"><div class="stat">776,728</div><div>Gaussian splats in a 23.70 MiB browser asset</div></div>
-    <div class="card"><div class="stat">10,000</div><div>Splatfacto training steps completed on the GPU node</div></div>
-    <div class="card"><div class="stat">Unknown</div><div>physical room and screen dimensions; scale is relative</div></div>
+    <div class="card"><div class="stat">198 / 198</div><div>sampled frames in one camera model</div></div>
+    <div class="card"><div class="stat">873,736</div><div>Gaussian splats in a 26.66 MiB browser asset</div></div>
+    <div class="card"><div class="stat">20,000</div><div>Splatfacto training steps on the NST GPU node</div></div>
+    <div class="card"><div class="stat">Unknown</div><div>physical room dimensions; scale is relative</div></div>
   </div>
   <h3>System architecture</h3>
-  <div class="flow"><div>One Sony video<br>4K · 50 fps</div><span>→</span><div>Frames<br>2 fps</div><span>→</span><div>PyCOLMAP<br>camera poses</div><span>→</span><div>Nerfstudio<br>Splatfacto</div><span>→</span><div>32-byte .splat<br>WebGL viewer</div></div>
-  <p>The app uses Next.js, React, Three.js, and a Gaussian splat renderer. Scene metadata defines the starting camera, relative scale, preview walk limits, obstacle boxes, and points of interest. The browser keeps reconstruction rendering separate from collision and route logic.</p>
-  <div class="note"><strong>Scope of the claim.</strong> This is a real visual reconstruction with a walking preview. The splat does not supply a measured room mesh. The visible floor plan and collision boxes are estimates.</div>
-  <div class="footer"><span>Source: C5304.MP4 only</span><span>1 / 4</span></div>
+  <div class="flow"><div>One Sony video<br>4K · 50 fps</div><span>→</span><div>198 frames<br>4 fps</div><span>→</span><div>PyCOLMAP<br>camera poses</div><span>+</span><div>VGGT<br>depth points</div><span>→</span><div>Splatfacto<br>Gaussian model</div><span>→</span><div>WebGL<br>viewer</div></div>
+  <p>The app uses Next.js, React, Three.js, and a Gaussian splat renderer. Scene metadata sets the start view, relative scale, and preview walk limits. Rendering and navigation logic are separate.</p>
+  <div class="note"><strong>Scope.</strong> This is a visual reconstruction with a walking preview. The splat is not a measured room mesh. No furniture collision is claimed for this model. The video has limited views of the upper walls and ceiling.</div>
+  <div class="footer"><span>Source: C5306.MP4 only</span><span>1 / 4</span></div>
 </section>
 
 <section class="page">
   <div class="top"><span>Capture SOP and source control</span><span>Round 1 · Technical abstract</span></div>
   <h2>Record a stable, overlapping room pass</h2>
-  <p>The repeat-capture SOP has seven actions. Select one room and record one continuous video with one lens. Keep the scene static and use steady light. Walk slowly with translation. Show the walls, floor edges, ceiling, and furniture from more than one position. Avoid fast pans. Preserve the raw video and its checksum. Accept only a coherent camera path before training.</p>
-  <img class="image" src="source-frame-C5304.jpg" alt="Frame from the source classroom video">
-  <div class="caption">Frame 74 from the sole source video. It shows the screen, tables, chairs, floor, and ceiling used for reconstruction.</div>
+  <p>The repeat-capture SOP has seven actions. Select one room. Record one continuous video with one lens. Keep people out and use steady light. Walk slowly with translation. Show walls, floor edges, ceiling, and furniture from several positions. Avoid fast pans. Keep the raw video and checksum. Check that the camera route is continuous before training.</p>
+  <img class="image" src="source-frame-C5306.jpg" alt="Frame from the sole source classroom video">
+  <div class="caption">Frame 80 from C5306.MP4 shows the stage steps, floor, desks, and chairs. The camera faces down, which limits upper-room coverage.</div>
   <h3>Actual source and frame selection</h3>
   <table>
-    <tr><th>Input</th><td><code>assets/C5304.MP4</code>, Sony H.264 video, 3840 × 2160, 50 fps, 60.48 s</td></tr>
-    <tr><th>Integrity</th><td>SHA-256 <code>a1d92c06896efdaa50fc0cac56152ffd3a18e701ad4424e91d0ae75e183ccaf8</code></td></tr>
-    <tr><th>Selection</th><td>First 55 s sampled at 2 fps and resized to 1920 × 1080. This made 110 candidate frames.</td></tr>
-    <tr><th>Excluded</th><td>Frames 100–110 did not join the continuous sequential camera model. They did not enter training.</td></tr>
+    <tr><th>Input</th><td><code>assets/C5306.MP4</code>, Sony H.264 video, 3840 × 2160, 50 fps, 49.44 s</td></tr>
+    <tr><th>Integrity</th><td>SHA-256 <code>9e4124bb4c7d8dd19fb31de78796f71b932256dfaacd230aeb2a75cb00c54972</code></td></tr>
+    <tr><th>Selection</th><td>Sample the full video at 4 fps. This gives 198 frames. Use sequential feature matching at the source resolution.</td></tr>
+    <tr><th>Camera route</th><td>All 198 frames registered in one model. The maximum adjacent camera step was 1.22 times the median step.</td></tr>
   </table>
-  <p>The video was provided before this run. We did not control its original capture settings. We did not use photos, other videos, prior camera poses, or a measured room dimension. The last part of the clip includes a fast pan and was not suitable for a continuous reconstruction.</p>
-  <div class="footer"><span>Sample frames: tests/data/single-video-C5304</span><span>2 / 4</span></div>
+  <p>The video was supplied before this reconstruction. We did not control its original capture. We used no still photos, other video, prior camera poses, or measured room size. The source points down for much of the route. The model cannot show a complete ceiling from this recording.</p>
+  <div class="footer"><span>Video SHA-256: 9e4124bb4c7d8dd19fb31de78796f71b932256dfaacd230aeb2a75cb00c54972</span><span>2 / 4</span></div>
 </section>
 
 <section class="page">
   <div class="top"><span>Reconstruction and quality control</span><span>Round 1 · Technical abstract</span></div>
-  <h2>Reject folded poses before training</h2>
-  <p>PyCOLMAP used sequential SIFT matching and one camera model. It registered 99 frames in one model with 18,500 sparse points. The mean reprojection error was 0.633 pixels. The median adjacent camera step was 0.2433 model units; the maximum was 0.2877. The path passed a step-ratio gate.</p>
-  <p>An exhaustive attempt registered 110 frames but jumped about 9.43 units between frames 99 and 100. A seeded retry still jumped about 8.95 units. We rejected both models. An apparently complete frame count was weaker evidence than a coherent camera trajectory.</p>
+  <h2>Validate depth against the video camera solve</h2>
+  <p>Sequential PyCOLMAP reconstruction registered 198 of 198 frames in one model with 59,929 sparse points. Its mean reprojection error was 0.754 pixels. The median adjacent camera step was 0.141 model units and the maximum was 0.171.</p>
+  <p>VGGT inferred depth and camera predictions for 25 sampled frames. We fitted each depth map to sparse points from the same video. All 25 had a positive depth scale. Median relative depth error was 1.14% at matched sparse points. VGGT camera poses were less consistent, so training used PyCOLMAP poses and VGGT depth points.</p>
   <h3>Training and export</h3>
   <ol>
-    <li>Filter the sparse cloud to points seen from at least three accepted frames with at most 2.5 pixels of error. Keep 17,617 starting points.</li>
-    <li>Train Nerfstudio Splatfacto for 10,000 steps. Disable camera optimization and scale regularization for this run.</li>
-    <li>Export the Gaussian PLY. Align it with the floor and the screen observed in three frames of the same video.</li>
-    <li>Remove distant outliers and write 776,728 records in the standard 32-byte <code>.splat</code> layout.</li>
+    <li>Filter the sparse cloud to 58,344 starting points. Add 51,800 depth points that pass confidence and room-envelope checks.</li>
+    <li>Train Nerfstudio Splatfacto for 20,000 steps on the NST GPU node. Disable camera optimization and scale regularization.</li>
+    <li>Fit the visible floor using the same video. Define the median camera clearance as one arbitrary scene unit.</li>
+    <li>Remove distant outliers and export 873,736 records in the standard 32-byte <code>.splat</code> layout.</li>
   </ol>
   <div class="grid">
-    <div class="card"><strong>Relative scale</strong><br>The marked screen border has a height of two arbitrary scene units. A floor fit sets Y = 0. No real length was measured.</div>
-    <div class="card"><strong>Browser result</strong><br>Chrome loaded the 23.70 MiB asset. The free-roam view and a route to the projector screen worked.</div>
+    <div class="card"><strong>Relative scale</strong><br>The fitted floor sets Y = 0. No physical length was measured. Positions and routes use scene units.</div>
+    <div class="card"><strong>Browser result</strong><br>The 26.66 MiB asset loads in the desktop viewer. The captured aisle supports free roaming and a short front route.</div>
   </div>
-  <h3>Known visual limits</h3>
-  <p>The central screen and seating are recognizable. Dark gaps, floating detail, and some ghosting remain near view edges and from novel viewpoints. Plain surfaces, reflections, limited coverage, and the rapid pan reduce reliable geometry. Extra training steps cannot create views that the accepted video did not capture.</p>
-  <div class="note">The 0.633-pixel error measures sparse feature fit. It is not a held-out image-quality score. We have no PSNR, SSIM, measured room dimensions, or mobile frame-rate result for this run.</div>
-  <div class="footer"><span>Output SHA-256: e656fe712bdd93e266d980614fa19b90ac92e19f11d5d05b8376e2f640ae946c</span><span>3 / 4</span></div>
+  <h3>Visual limits</h3>
+  <p>The floor, stage steps, desks, and chairs are recognizable. A dark patch remains near the upper front wall. The ceiling and upper walls have weak coverage because the camera points down. Extra training cannot restore surfaces that the source did not record.</p>
+  <div class="note">Held-out image scores are PSNR 31.05, SSIM 0.929, and LPIPS 0.174. Test images are nearby frames from the same video, so these scores can overstate quality from new viewpoints. There is no measured room size or mobile performance result.</div>
+  <div class="footer"><span>Output SHA-256: da3819945297f02f1731827f13d6e59135b45cc3dbaca8d309255b098d5ef840</span><span>3 / 4</span></div>
 </section>
 
 <section class="page">
   <div class="top"><span>Web viewer and reproducibility</span><span>Round 1 · Technical abstract</span></div>
-  <h2>Walk through the reconstructed room</h2>
-  <p>The one-video room is the app's default scene. Visitors use WASD or arrow keys to move and the mouse to look. The viewer streams the splat, shows real byte progress, and offers a reset control. It reports camera positions and route lengths in <strong>scene units</strong>, since metric scale is unknown.</p>
-  <p>Search finds the projector screen and rear aisle. A floor-grid A* route avoids the configured obstacle boxes. The <strong>Colliders</strong> control displays those boxes and the preview limits. These proxies are a demonstration layer. They have not been checked against measured room geometry.</p>
+  <h2>Walk through the captured aisle</h2>
+  <p>The C5306 room is the app's default scene. Visitors use WASD or arrow keys to move, and the mouse to look. The viewer streams the splat, shows load progress, and has a reset control. It reports camera positions and route lengths in scene units.</p>
+  <p>Search finds one front-aisle point of interest. Its route stays near recorded camera positions. Walk limits are visual estimates. The app does not claim verified furniture collision for this scene.</p>
   <h3>Reproduce and inspect</h3>
-  <p>The code repository contains <code>scripts/reconstruct-sfm.py</code>, <code>scripts/check-sfm-trajectory.py</code>, <code>scripts/package-classroom-cluster.py</code>, <code>scripts/calibrate-relative-room.py</code>, and <code>scripts/export-metric-splat.py</code>. It contains 24 sample frames in <code>tests/data/single-video-C5304</code>. The full command sequence and limits are in <code>docs/single-video-reconstruction.md</code>.</p>
-  <div class="card"><code>npm ci</code> → <code>npm test</code> → <code>npm run build</code> → <code>npm run start</code><br><span class="small">Open the local site in a WebGL-capable browser. The 24 sample frames test setup; the full model needs the original source video.</span></div>
+  <p>The repository contains the frame and camera reconstruction pipeline, VGGT depth inference and validation, floor calibration, and splat export scripts. The C5304 model remains available as an earlier comparison scene.</p>
+  <div class="card"><code>npm ci</code> → <code>npm test</code> → <code>npm run build</code> → <code>npm run start</code><br><span class="small">Open the site in a WebGL browser. The full reconstruction needs the original C5306.MP4 source, which is not stored in Git.</span></div>
   <h3>Open-source tools and credits</h3>
-  <p>Camera reconstruction: <a href="https://colmap.github.io/">COLMAP / PyCOLMAP</a>. Gaussian training and export: <a href="https://docs.nerf.studio/">Nerfstudio Splatfacto</a> and its gsplat dependency. Viewer: <a href="https://nextjs.org/">Next.js</a>, <a href="https://react.dev/">React</a>, <a href="https://threejs.org/">Three.js</a>, and <a href="https://github.com/mkkellogg/GaussianSplats3D">GaussianSplats3D</a>. Media extraction: <a href="https://ffmpeg.org/">FFmpeg</a>. The app's scene configuration, collision preview, and integration code are in this repository. Each dependency retains its own license.</p>
-  <h3>Submission checks</h3>
-  <table>
-    <tr><th>Ready locally</th><td>One-video 3D asset; free-roam viewer; capture/reconstruction SOP; pipeline checks; sample data; four-page abstract; 3-minute-34-second demonstration video.</td></tr>
-    <tr><th>Must be verified externally</th><td>Public viewer URL, published repository with this version, and an accessible submission folder.</td></tr>
-  </table>
+  <p>Camera reconstruction: <a href="https://colmap.github.io/">COLMAP / PyCOLMAP</a>. Depth: <a href="https://github.com/facebookresearch/vggt">VGGT</a>. Gaussian training: <a href="https://docs.nerf.studio/">Nerfstudio Splatfacto</a> and gsplat. Viewer: <a href="https://nextjs.org/">Next.js</a>, <a href="https://react.dev/">React</a>, <a href="https://threejs.org/">Three.js</a>, and <a href="https://github.com/mkkellogg/GaussianSplats3D">GaussianSplats3D</a>. Media extraction: <a href="https://ffmpeg.org/">FFmpeg</a>. Each tool retains its own license.</p>
+  <h3>Access and review</h3>
+  <p>The model and viewer are complete locally. The public viewer and matching code branch will be linked here after publication is approved and their URLs are verified. The earlier 3:34 video demonstrates the same room in the C5304 model; a new recording is needed to show this C5306 default.</p>
   <div class="footer"><span>Namma Space · One video, unknown physical dimensions</span><span>4 / 4</span></div>
 </section>
 </body>
