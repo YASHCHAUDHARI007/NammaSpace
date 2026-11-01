@@ -17,6 +17,8 @@ import struct
 import numpy as np
 import pycolmap
 
+from person_point_filter import PersonPointFilter
+
 
 WORLD_TO_NERFSTUDIO = np.array(
     [[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0]], dtype=np.float64
@@ -44,6 +46,7 @@ def main() -> None:
     parser.add_argument("--video-only", action="store_true")
     parser.add_argument("--max-point-error", type=float, default=2.5)
     parser.add_argument("--min-point-views", type=int, default=3)
+    parser.add_argument("--mask-dir", type=Path, help="COLMAP masks; exclude points with too few unmasked observations")
     args = parser.parse_args()
     if not args.images.is_dir() or not args.model.is_dir():
         parser.error("Input image or model folder does not exist")
@@ -95,11 +98,12 @@ def main() -> None:
         })
 
     selected_ids = {image.image_id for image in registered}
+    person_filter = PersonPointFilter(model, args.mask_dir)
     points = []
     for point in model.points3D.values():
         if point.error > args.max_point_error:
             continue
-        if sum(element.image_id in selected_ids for element in point.track.elements) < args.min_point_views:
+        if person_filter.count_clean_views(point, selected_ids) < args.min_point_views:
             continue
         x, y, z = map(float, point.xyz)
         xyz = np.array([x, z, -y], dtype=np.float32)

@@ -449,17 +449,17 @@ export default function App() {
                   <div className="drawer-section">
                     <h4><Camera size={15} /><span>1. Video Source</span></h4>
                     <p>
-                      This room uses only the first 15 seconds of <code>C5307.MP4</code>.
+                      This room uses only the 30.24-second <code>C5307.MP4</code> video.
                       It does not use still photos or frames from other videos.
                     </p>
                   </div>
                   <div className="drawer-section">
                     <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
                     <p>
-                      All 120 frames sampled at 8 fps registered in one camera route.
-                      COLMAP estimated the camera poses. VGGT supplied depth for initial
-                      points. Nerfstudio Splatfacto trained the Gaussian model for 30,000
-                      steps on the NST GPU cluster.
+                      All 242 frames sampled at 8 fps registered in one camera route.
+                      PyCOLMAP estimated the camera poses. VGGT depth was checked on 35
+                      frames and supplied initial points. We trained the Gaussian model
+                      for 20,000 steps on a local Apple GPU using 149 person-free frames.
                     </p>
                     <p>
                       The fitted walking floor sets the scene orientation. Camera clearance
@@ -469,8 +469,8 @@ export default function App() {
                   <div className="drawer-section">
                     <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
                     <p>
-                      The stage and central seating are clear from recorded camera positions.
-                      The right wall and some furniture have ghosting or missing detail.
+                      The stage, ceiling, walls, and central seating are clear near recorded
+                      camera positions. Some side furniture softens from other viewpoints.
                       Walking limits are visual estimates. Furniture collision has not
                       been verified for this scene.
                     </p>

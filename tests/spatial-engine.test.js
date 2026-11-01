@@ -51,7 +51,7 @@ test('default one-video room has valid splats and explicit relative scale', () =
   assert.match(scene.calibration.captureSource, /C5307\.MP4/);
   const file = readFileSync(new URL('../public/scenes/classroom-c5307-single-video.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
-  assert.equal(validateSplatBuffer(bytes), 324633);
+  assert.equal(validateSplatBuffer(bytes), 371831);
   assert.doesNotThrow(() => validateSceneConfig(scene));
   assert.throws(() => validateSceneConfig({ ...scene, calibration: { ...scene.calibration, scaleType: 'metric' } }), /calibration/);
 });

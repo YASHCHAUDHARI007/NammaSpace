@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--threads", type=int, default=-1)
     parser.add_argument("--max-image-size", type=int, default=-1)
     parser.add_argument("--camera-params", default="", help="Optional focal length, principal point, and radial distortion")
+    parser.add_argument("--mask-dir", type=Path, help="COLMAP image masks named like frame_0001.jpg.png")
     parser.add_argument("--seed-images", type=Path,
                         help="Folder containing a coherent subset; register it first, then add the remaining images while fixing its poses")
     args = parser.parse_args()
@@ -35,6 +36,14 @@ def main() -> None:
     image_count = sum(path.suffix.lower() == ".jpg" for path in images.iterdir())
     if image_count < 20:
         parser.error(f"Expected at least 20 JPG frames; found {image_count}")
+    if args.mask_dir:
+        mask_dir = args.mask_dir.resolve()
+        if not mask_dir.is_dir():
+            parser.error(f"Mask folder does not exist: {mask_dir}")
+        missing = [path.name for path in images.glob('*.jpg')
+                   if not (mask_dir / f'{path.name}.png').is_file()]
+        if missing:
+            parser.error(f"Missing COLMAP masks for {len(missing)} frames, including {missing[0]}")
     seed_names = None
     if args.seed_images:
         if not args.seed_images.is_dir():
@@ -52,6 +61,8 @@ def main() -> None:
     device = pycolmap.Device.cpu if args.device == "cpu" else pycolmap.Device.cuda
     print(f"Extracting {args.device.upper()} SIFT from {image_count} images", flush=True)
     reader = pycolmap.ImageReaderOptions(camera_model="SIMPLE_RADIAL", camera_params=args.camera_params)
+    if args.mask_dir:
+        reader.mask_path = mask_dir
     extraction = pycolmap.FeatureExtractionOptions(num_threads=args.threads, max_image_size=args.max_image_size)
     pycolmap.extract_features(
         database,
@@ -108,6 +119,7 @@ def main() -> None:
         "matching": args.matching,
         "device": args.device,
         "camera_params_initial": args.camera_params or None,
+        "masked_features": bool(args.mask_dir),
         "seed_images": len(seed_names) if seed_names else None,
         "seed_registered_images": seed_model.num_reg_images() if seed_models else None,
         "pycolmap_version": pycolmap.__version__,

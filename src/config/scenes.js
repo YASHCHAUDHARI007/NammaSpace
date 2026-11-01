@@ -20,18 +20,19 @@ export const SCENES = {
     shortLabel: 'C5307 One-Video Room',
     mode: 'splat',
     sceneType: '3D Gaussian Splatting (.splat)',
-    reconstructionStatus: 'Reconstructed only from C5307.MP4; relative scale; partial right-wall coverage',
+    reconstructionStatus: 'C5307.MP4 only; local VGGT-assisted reconstruction; relative scale',
     navigationStatus: 'pilot',
     roomBoundsKnown: false,
     showCalibrationStage: false,
     isReconstructed: true,
     eyeHeight: 1,
+    cameraFov: 57.2,
     assetUrl: '/scenes/classroom-c5307-single-video.splat',
     dimensionsLabel: 'Room dimensions unknown',
     description:
-      'This model uses 120 frames from the first 15 seconds of one Sony video. The stage, seating, floor, and ceiling are visible. The right wall and some furniture still have ghosting. Scale and walking limits are visual estimates.',
+      'This model uses 149 person-free training frames from one 30.24-second Sony video. All 242 sampled frames registered in one camera route. The stage, seating, floor, walls, and ceiling are visible. Some side furniture softens from weakly recorded viewpoints. Walking limits are visual estimates.',
     calibration: {
-      captureSource: 'assets/C5307.MP4, first 15 seconds; 120 registered frames at 8 fps',
+      captureSource: 'assets/C5307.MP4, 30.24 seconds; 242 registered frames at 8 fps; 149 person-free training frames',
       upAxis: 'Y',
       scaleType: 'relative',
       sceneUnitsPerAssetUnit: 1,
@@ -40,15 +41,15 @@ export const SCENES = {
       referenceHeightSceneUnits: 1
     },
     spawn: {
-      position: [0.025, 1, 2.46],
-      yaw: 0,
-      pitch: -0.04
+      position: [0.07, 1, 2.46],
+      yaw: 0.105,
+      pitch: -0.079
     },
     roomBounds: {
-      minX: -1.6,
-      maxX: 1.6,
-      minZ: 0.6,
-      maxZ: 4.2,
+      minX: -2,
+      maxX: 4,
+      minZ: 0.3,
+      maxZ: 8.4,
       floorY: 0,
       ceilingY: 2.5
     },
