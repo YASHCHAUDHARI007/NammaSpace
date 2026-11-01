@@ -487,6 +487,16 @@ export const SCENES = {
     sceneType: 'COLMAP dense mesh (.glb)',
     reconstructionStatus: 'Sony camera reconstruction; scale and floor alignment unverified',
     navigationStatus: 'visual-inspection-only',
+    eyeHeight: 1.68,
+    calibration: {
+      captureSource: 'Sony A7S III room footage; provisional alignment',
+      upAxis: 'Y',
+      originDescription: 'Provisional origin; floor and orientation not physically calibrated',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      referenceObject: 'Unmeasured room geometry; relative scale only',
+      referenceHeightSceneUnits: 1
+    },
     isReconstructed: true,
     assetUrl: '/models/room-01.glb',
     dimensionsLabel: 'Approx. 10.32 × 7.91 × 11.66 reconstruction units',
@@ -502,8 +512,8 @@ export const SCENES = {
       maxX: 6.57,
       minZ: -5.36,
       maxZ: 6.30,
-      floorY: -4.56,
-      ceilingY: 3.36
+      floorY: 0,
+      ceilingY: 8.0
     },
     colliders: [],
     pois: []
