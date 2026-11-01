@@ -32,6 +32,7 @@ export default function App() {
 
   const [customScenes, setCustomScenes] = useState({});
   const [activeSceneId, setActiveSceneId] = useState(DEFAULT_SCENE_ID);
+  const [sceneReady, setSceneReady] = useState(false);
   const [sceneReloadToken, setSceneReloadToken] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showGuideDrawer, setShowGuideDrawer] = useState(false);
@@ -60,6 +61,14 @@ export default function App() {
   const activeScene = allScenesMap[activeSceneId] || SCENES[DEFAULT_SCENE_ID];
   const sceneList = [...getSceneList(), ...Object.values(customScenes)];
 
+  useEffect(() => {
+    const requestedScene = new URLSearchParams(window.location.search).get('scene');
+    if (requestedScene && SCENES[requestedScene]) {
+      setActiveSceneId(requestedScene);
+    }
+    setSceneReady(true);
+  }, []);
+
   // Fullscreen state listener
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -86,6 +95,13 @@ export default function App() {
     setActiveRoute(null);
     setLoadError(null);
     setActiveSceneId(sceneId);
+    const url = new URL(window.location.href);
+    if (SCENES[sceneId]) {
+      url.searchParams.set('scene', sceneId);
+    } else {
+      url.searchParams.delete('scene');
+    }
+    window.history.replaceState(null, '', url);
   }, []);
 
   const handleStartExplore = useCallback(() => {
@@ -195,7 +211,7 @@ export default function App() {
       />
 
       {/* B. Main 3D Viewport */}
-      <SceneViewer
+      {sceneReady && <SceneViewer
         ref={viewerRef}
         sceneConfig={activeScene}
         reloadToken={sceneReloadToken}
@@ -222,7 +238,7 @@ export default function App() {
         onSelectPoi={(poi) => handleSelectPoi(poi, false)}
         onRouteComputed={(routeData) => setActiveRoute(routeData)}
         onTelemetryUpdate={setCameraCoords}
-      />
+      />}
 
       {/* E. Scene Information & Telemetry Card (Bottom Left) */}
       <section className="scene-info-card" aria-label="Scene Information and Telemetry">
@@ -330,7 +346,7 @@ export default function App() {
       />
 
       {/* C. Welcome Overlay ("Step inside.") */}
-      {showWelcome && !loadError && (
+      {sceneReady && showWelcome && !loadError && (
         <WelcomeOverlay
           sceneConfig={activeScene}
           onStartExplore={handleStartExplore}
@@ -394,6 +410,42 @@ export default function App() {
             </div>
 
             <div className="drawer-content">
+              {activeSceneId === 'classroom-c5306-single-video' ? (
+                <>
+                  <div className="drawer-section">
+                    <h4><Camera size={15} /><span>1. Video Source</span></h4>
+                    <p>
+                      This room uses only <code>C5306.MP4</code>, one continuous 49.44-second
+                      Sony video. It does not use still photos or frames from other videos.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
+                    <p>
+                      All 198 frames sampled at 4 fps registered in one continuous camera route.
+                      VGGT supplied depth for validated points. Nerfstudio Splatfacto trained the
+                      Gaussian model for 20,000 steps on the NST GPU cluster.
+                    </p>
+                    <p>
+                      The video camera poses are used because the VGGT pose estimate was less
+                      consistent along this route. The model uses relative scene units.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
+                    <p>
+                      The camera shows the floor, stage, and seating. It points down for much of
+                      the video, so the ceiling and upper walls have limited coverage. The floor
+                      sets the scene orientation. No physical room size was measured.
+                    </p>
+                    <p>
+                      The front-aisle route follows recorded camera positions. Walking limits are
+                      visual estimates. Furniture collision has not been verified for this scene.
+                    </p>
+                  </div>
+                </>
+              ) : (
+              <>
               <div className="drawer-section">
                 <h4>
                   <Camera size={15} />
@@ -451,6 +503,8 @@ export default function App() {
                   results, source checks, and limitations.
                 </p>
               </div>
+              </>
+              )}
             </div>
           </aside>
         </div>

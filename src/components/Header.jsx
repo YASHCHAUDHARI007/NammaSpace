@@ -153,7 +153,7 @@ export default function Header({
           <div className="poi-dropdown" role="listbox" aria-label="Points of Interest">
             <div className="poi-dropdown-header">
               <span>Spatial Points of Interest ({filteredPois.length})</span>
-              <span>A* Obstacle Route</span>
+              <span>{activeScene.colliders?.length ? 'A* Obstacle Route' : 'A* Aisle Route'}</span>
             </div>
             {filteredPois.length === 0 ? (
               <div style={{ padding: '10px', fontSize: '12.5px', color: 'var(--color-ivory-dim)' }}>
