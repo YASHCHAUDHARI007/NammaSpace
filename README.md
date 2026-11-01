@@ -1,20 +1,14 @@
 # NAMMA SPACE
 ### *Your space, reimagined.*
-**Indoor 3D reconstruction and spatial navigation**
+**IIT Bombay Techfest 2026–27 | Indoor 3D Digital Twin & Spatial Navigation Platform**
 
-**Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5306.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes, with first-person movement, preview collision boxes, and A* floor routes. The classroom's physical dimensions are unknown; its navigation scale is relative.
+**Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5307.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes with first-person movement. The classroom's physical dimensions are unknown; its navigation scale is relative.
 
-Read the [current classroom update](./docs/classroom-project-update.md) for the result, checks, and limits. The [reconstruction report](./docs/single-video-reconstruction.md) gives the capture SOP and full processing steps.
-
-## Current classroom result
-
-The `main` branch contains the one-video model, viewer code, 24 sample frames, and a [3:34 narrated walkthrough](./submission/round1-demonstration.mp4). The prebuilt model runs without the source recording. Full retraining needs the original 1.5 GB `assets/C5304.MP4`, which is not in Git. Check its SHA-256 in the reconstruction report before retraining.
-
-The model still has visible ghosting near the projector screen and in weakly observed views. This repository does not contain a verified hosted viewer URL.
+Run `npm ci` and `npm run dev` to open the current model. The source video is not in Git. The submission media stored in Git describe earlier classroom models. The current C5307 submission files are local.
 
 ---
 
-## Viewer capabilities
+## 1. Key Capabilities (Round 1 + Round 2 Architecture Foundations)
 
 - **Three Modular Scene Modes (`src/viewer/sceneLoader.js`):**
   1. **Procedural Baseline (`mode: 'demo'`):** A manually built 10m × 8m × 3.2m reference interior. This separate scene is a viewer fixture, not part of the one-video classroom reconstruction.
@@ -33,7 +27,7 @@ The model still has visible ghosting near the projector screen and in weakly obs
 
 ---
 
-## Repository map
+## 2. Project Structure
 
 ```text
 src/
@@ -65,20 +59,23 @@ public/
   scenes/
     sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
     classroom-metric.splat # Screen-scaled Sony camera capture pilot (558,361 splats)
-    classroom-single-video.splat # Default one-video classroom (776,728 splats)
+    classroom-c5307-single-video.splat # Current one-video classroom
+    classroom-single-video.splat # Earlier C5304 one-video classroom
 docs/
-  classroom-project-update.md # Current result, checks, and limits
   single-video-reconstruction.md # Source, capture SOP, pipeline, checks, and limits
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
   classroom-capture-pilot-2026-10-30.md # Results and limits of the real-camera pilot
-  architecture.md         # System architecture and future extensions
-tests/data/single-video-C5304/ # 24 frames derived from the one source video
+  architecture.md         # System architecture & Round 2 extension design
+tests/data/single-video-C5304/ # 24 sample frames from the earlier C5304 video
+submission/
+  technical-abstract.pdf # Four-page Round 1 abstract
+  round1-demonstration.mp4 # Narrated 3:34 capture and walkthrough
 ```
 
 ---
 
-## Local setup
+## 3. Local Setup & Commands
 
 ### Prerequisites
 - **Node.js** `>= 18.18.0` and **npm** `>= 9.0.0`
@@ -96,11 +93,52 @@ npm test
 npm run build
 npm run start
 ```
-The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser.
+The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser. The existing styles, scene registry, and assets remain in place.
 
 ---
 
-## Capture and import another room
+## Rebuild the C5307 classroom on Apple Silicon
+
+Use only `assets/C5307.MP4` as the image source. Check that its SHA-256 is
+`578dd301276d1dfa93e1cd3758fa62bb2c92fdf2e23db2c3b0255196bf38730d`.
+The file is not in Git. Keep generated data under `outputs/`.
+
+Create three Python environments. Install PyCOLMAP 4.2.1, NumPy, SciPy, Pillow,
+and plyfile in Python 3.11 for camera reconstruction. Install PyTorch,
+TorchVision, OpenCV, and the [official VGGT code](https://github.com/facebookresearch/vggt)
+in Python 3.12 for masks and depth. Install `msplat==1.1.4`, NumPy, Pillow,
+plyfile, and OpenCV in a separate Python 3.12 environment for Metal training.
+Set `SFM_PY`, `VGGT_PY`, and `METAL_PY` to their Python executables.
+VGGT downloads its official model weights on the first run unless you pass
+`--weights /path/to/model.pt`.
+
+```bash
+ROOM_RUN=outputs/classroom/c5307-rebuild
+mkdir -p "$ROOM_RUN/frames"
+ffmpeg -nostdin -i assets/C5307.MP4 -vf 'fps=8,scale=1920:1080' -q:v 2 "$ROOM_RUN/frames/frame_%04d.jpg"
+"$SFM_PY" scripts/reconstruct-sfm.py "$ROOM_RUN/frames" "$ROOM_RUN/sfm" --device cpu --matching sequential --max-image-size 1920
+"$SFM_PY" scripts/mask-single-video-people.py "$ROOM_RUN/frames" "$ROOM_RUN/masks-broad" --colmap-only --plan scripts/c5307-person-mask-plan-refined.json
+"$VGGT_PY" scripts/refine-person-masks-local.py "$ROOM_RUN/frames" "$ROOM_RUN/masks-broad" "$ROOM_RUN/masks-tight" --device mps
+"$SFM_PY" scripts/finalize-c5307-person-masks.py "$ROOM_RUN/masks-tight" "$ROOM_RUN/masks-final"
+"$SFM_PY" scripts/package-classroom-cluster.py "$ROOM_RUN/frames" "$ROOM_RUN/sfm/sparse/0" "$ROOM_RUN/nerfstudio" --video-only --mask-dir "$ROOM_RUN/masks-final"
+"$VGGT_PY" scripts/run-vggt-depth.py "$ROOM_RUN/frames" "$ROOM_RUN/vggt-first.npz" --max-frame 120 --stride 5 --device mps
+"$VGGT_PY" scripts/run-vggt-depth.py "$ROOM_RUN/frames" "$ROOM_RUN/vggt-last.npz" --start-index 220 --max-frame 242 --stride 2 --device mps
+"$SFM_PY" scripts/merge-vggt-depth.py "$ROOM_RUN/vggt.npz" "$ROOM_RUN/vggt-first.npz" "$ROOM_RUN/vggt-last.npz"
+"$SFM_PY" scripts/evaluate-vggt-depth.py "$ROOM_RUN/vggt.npz" "$ROOM_RUN/sfm/sparse/0" "$ROOM_RUN/vggt-validation.json"
+"$SFM_PY" scripts/build-vggt-initialization.py "$ROOM_RUN/nerfstudio" "$ROOM_RUN/sfm/sparse/0" "$ROOM_RUN/vggt.npz" "$ROOM_RUN/vggt-validation.json" "$ROOM_RUN/nerfstudio-vggt" --mask-dir "$ROOM_RUN/masks-final"
+"$SFM_PY" scripts/prepare-local-msplat-dataset.py "$ROOM_RUN/nerfstudio-vggt" "$ROOM_RUN/masks-final" "$ROOM_RUN/train"
+"$SFM_PY" scripts/write-msplat-transform.py "$ROOM_RUN/train" "$ROOM_RUN/msplat-transform.json"
+"$METAL_PY" scripts/train-room-local-msplat.py "$ROOM_RUN/train" "$ROOM_RUN/checkpoints" --steps 20000 --checkpoint-every 2500 --downscale 0.5 --refine-every 500 --grad-threshold 0.0005
+"$SFM_PY" scripts/export-metric-splat.py "$ROOM_RUN/checkpoints/step-020000.ply" "$ROOM_RUN/msplat-transform.json" scripts/c5307-walking-floor-calibration.json "$ROOM_RUN/rebuilt.splat" --crop-min -4 -0.25 -3 --crop-max 5 3 9 --max-axis-scale-m 0.25
+```
+
+Check `tests/data/single-video-C5304/` for small sample frames and run `npm test`
+to verify the viewer asset parser. These sample frames come from an earlier
+video. They are not training input for the C5307 room.
+
+---
+
+## 4. How to Capture & Import Your Own Reconstructed Room
 
 1. **Capture the Room:** Follow [`docs/capture-sop.md`](./docs/capture-sop.md) to record overlapping perimeter and interior passes using a smartphone.
 2. **Choose and test a reconstruction route:** Read the [3D reconstruction research](./docs/3d-reconstruction-research.md), then follow the [reconstruction workflow](./docs/reconstruction-workflow.md) to produce a textured `.glb` or convert an exported Gaussian PLY to standard `.splat`.
@@ -110,12 +148,14 @@ The App Router prerenders the page shell. The interactive application is a Clien
 
 ---
 
-## Deployment
+## 5. Deployment
 
-Next.js writes its production output to `.next/`. No public viewer deployment is verified in this repository.
+Next.js writes its production output to `.next/`. The old Vite SPA rewrite was removed because it would route Next.js assets and pages to a nonexistent `index.html`.
 
 - **Vercel:** Import the repository as a Next.js project. Use `npm ci` and `npm run build`; keep the framework's default output settings.
 - **Other Node hosts:** Run `npm ci`, `npm run build`, then `npm run start`. Use a Next.js-compatible platform integration when deploying to a managed static host.
+
+For a local static package, run `NAMMA_STATIC_EXPORT=1 npm run build`. Serve the generated `out/` folder over HTTP.
 
 ---
 
@@ -123,6 +163,6 @@ Next.js writes its production output to `.next/`. No public viewer deployment is
 
 The sample GLB and `sample-capture.splat` are generated demonstration fixtures. The default `classroom-single-video.splat` uses only `C5304.MP4`. The older `classroom-metric.splat` is a separate multi-video pilot; see the [pilot report](./docs/classroom-capture-pilot-2026-10-30.md). The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
 
-The one-video classroom's physical dimensions are unknown. Its screen height is set to two arbitrary scene units. The navigation limits and furniture collision boxes are preview estimates, and some ghosting remains. The quality review and limits are recorded in the [one-video report](./docs/single-video-reconstruction.md).
+The current C5307 classroom's physical dimensions are unknown. Its walking floor is aligned to Y = 0, and the median camera clearance defines one relative scene unit. The walking limits are visual estimates. No furniture collision is verified for this model. Detail can blur in views that the recording does not cover well.
 
 Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.
