@@ -4,7 +4,7 @@
 
 **Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5307.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes with first-person movement. The classroom's physical dimensions are unknown; its navigation scale is relative.
 
-Run `npm ci` and `npm run dev` to open the current model. The source video is not in Git. The submission media stored in Git describe earlier classroom models. The current C5307 submission files are local.
+Run `npm ci` and `npm run dev` to open the current model. The scene menu starts with the best C5307 model. It also lets you switch to the other completed one-video attempts: three C5307 comparisons and the C5306, C5305, and C5304 models. Each model uses only its named source video. Add `?scene=<scene-id>` to the viewer URL to open a specific attempt. The source videos are not in Git. The current C5307 submission files are local.
 
 ---
 
@@ -60,6 +60,10 @@ public/
     sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
     classroom-metric.splat # Screen-scaled Sony camera capture pilot (558,361 splats)
     classroom-c5307-single-video.splat # Current one-video classroom
+    classroom-c5307-colmap-clean-20k.splat # Local clean-frame trial without VGGT
+    classroom-c5307-vggt-filled-20k.splat # Local masked-and-filled trial
+    classroom-c5307-first15-baseline.splat # Earlier C5307 model
+    classroom-c5305-one-video.splat # Earlier ceiling-heavy one-video trial
     classroom-single-video.splat # Earlier C5304 one-video classroom
 docs/
   single-video-reconstruction.md # Source, capture SOP, pipeline, checks, and limits
@@ -135,6 +139,12 @@ ffmpeg -nostdin -i assets/C5307.MP4 -vf 'fps=8,scale=1920:1080' -q:v 2 "$ROOM_RU
 Check `tests/data/single-video-C5304/` for small sample frames and run `npm test`
 to verify the viewer asset parser. These sample frames come from an earlier
 video. They are not training input for the C5307 room.
+
+The C5307 comparison menu also contains a 20,000-step COLMAP-only run on 146
+person-free frames, a 20,000-step VGGT run on 242 frames with same-video fills
+for masked people, and the earlier 15-second model. The fill trial uses
+`scripts/fill-room-video-person-masks.py`. C5305 is an earlier 7,000-step
+ceiling-heavy one-video preview. The selected C5307 model remains the default.
 
 ---
 

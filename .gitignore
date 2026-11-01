@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 .next
+/out/
+/sites/
 *.local
 
 # Editor directories and files
@@ -49,6 +51,12 @@ data/
 *.splat
 !public/scenes/classroom-metric.splat
 !public/scenes/classroom-single-video.splat
+!public/scenes/classroom-c5305-one-video.splat
+!public/scenes/classroom-c5306-single-video.splat
+!public/scenes/classroom-c5307-single-video.splat
+!public/scenes/classroom-c5307-colmap-clean-20k.splat
+!public/scenes/classroom-c5307-vggt-filled-20k.splat
+!public/scenes/classroom-c5307-first15-baseline.splat
 *.ckpt
 *.pth
 *.pt
