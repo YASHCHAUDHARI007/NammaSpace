@@ -4,7 +4,7 @@
 
 **Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5307.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes with first-person movement. The classroom's physical dimensions are unknown; its navigation scale is relative.
 
-Run `npm ci` and `npm run dev` to open the current model. The scene menu starts with the best C5307 model. It also lets you switch to the other completed one-video attempts: three C5307 comparisons and the C5306, C5305, and C5304 models. Each model uses only its named source video. Add `?scene=<scene-id>` to the viewer URL to open a specific attempt. The source videos are not in Git. The current C5307 submission files are local.
+Follow [Local Setup](#3-local-setup) to open the viewer. The scene menu starts with the best C5307 model. It also lets you switch to the other completed one-video attempts: three C5307 comparisons and the C5306, C5305, and C5304 models. Each model uses only its named source video. Add `?scene=<scene-id>` to the viewer URL to open a specific attempt. The source videos are not in Git. The current C5307 submission files are local.
 
 ---
 
@@ -79,25 +79,35 @@ submission/
 
 ---
 
-## 3. Local Setup & Commands
+## 3. Local Setup
 
-### Prerequisites
-- **Node.js** `>= 18.18.0` and **npm** `>= 9.0.0`
+You need Node.js 18.18 or newer, npm 9 or newer, and a browser with WebGL support. The repository includes the viewer models. You do not need the source videos or Python to run the viewer.
 
-### Install & Run Development Server
-```bash
-npm ci
-npm run dev
-```
-Open `http://localhost:3000` in Chrome, Edge, Firefox, or Safari.
+1. Clone the repository and enter its directory:
 
-### Tests, Production Build & Startup
+   ```bash
+   git clone https://github.com/LiteralKrishu/NammaSpace.git
+   cd NammaSpace
+   ```
+
+2. Install the locked dependencies and start the development server:
+
+   ```bash
+   npm ci
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser. Select **Explore the space**. The best C5307 classroom loads by default. Use the scene menu at the top to compare the other models. Use **WASD** or the arrow keys to move, and use the mouse or drag to look around. Press **Esc** to release the cursor.
+
+To check the viewer and run it as a local production build, stop the development server and run:
+
 ```bash
 npm test
 npm run build
 npm run start
 ```
-The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser. The existing styles, scene registry, and assets remain in place.
+
+Open [http://localhost:3000](http://localhost:3000) again. Press `Ctrl+C` in the terminal to stop either server. To use port 3001 when port 3000 is busy, run `npm run dev -- -p 3001` or `npm run start -- -p 3001` and open `http://localhost:3001`.
 
 ---
 
