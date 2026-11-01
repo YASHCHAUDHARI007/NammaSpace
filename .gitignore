@@ -53,3 +53,9 @@ data/
 *.pth
 *.pt
 *.safetensors
+
+# Local reconstruction tools and macOS metadata
+.tools/vggt/
+.tools/colmap-libs/
+**/._*
+*.backup
