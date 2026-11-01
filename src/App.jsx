@@ -476,6 +476,25 @@ export default function App() {
                     </p>
                   </div>
                 </>
+              ) : (activeSceneId.startsWith('classroom-c5307-') || activeSceneId === 'classroom-c5305-one-video') ? (
+                <>
+                  <div className="drawer-section">
+                    <h4><Camera size={15} /><span>1. Video Source</span></h4>
+                    <p>{activeScene.calibration.captureSource}. This model uses no still photos or other videos.</p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
+                    <p>{activeScene.description}</p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
+                    <p>
+                      The floor and walking limits use relative scene units. No physical room
+                      size or furniture collision has been verified. Views with weak video
+                      coverage can show blur or missing detail.
+                    </p>
+                  </div>
+                </>
               ) : (
               <>
               <div className="drawer-section">

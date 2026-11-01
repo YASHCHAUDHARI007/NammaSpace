@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
 import { FirstPersonController } from '../src/viewer/controls.js';
-import { SCENES, DEFAULT_SCENE_ID } from '../src/config/scenes.js';
+import { SCENES, DEFAULT_SCENE_ID, getSceneList } from '../src/config/scenes.js';
 import { validateSplatBuffer, validateSceneConfig, loadSpatialScene } from '../src/viewer/sceneLoader.js';
 
 const room = {
@@ -54,6 +54,27 @@ test('default one-video room has valid splats and explicit relative scale', () =
   assert.equal(validateSplatBuffer(bytes), 371831);
   assert.doesNotThrow(() => validateSceneConfig(scene));
   assert.throws(() => validateSceneConfig({ ...scene, calibration: { ...scene.calibration, scaleType: 'metric' } }), /calibration/);
+});
+
+test('one-video attempts are selectable in order and ship with their own models', () => {
+  const attempts = [
+    ['classroom-c5307-single-video', 371831, 'C5307'],
+    ['classroom-c5307-colmap-clean-20k', 298587, 'C5307'],
+    ['classroom-c5307-vggt-filled-20k', 371294, 'C5307'],
+    ['classroom-c5307-first15-baseline', 324633, 'C5307'],
+    ['classroom-c5306-single-video', 873736, 'C5306'],
+    ['classroom-c5305-one-video', 559056, 'C5305'],
+    ['classroom-single-video', 776728, 'C5304']
+  ];
+  assert.deepEqual(getSceneList().slice(0, attempts.length).map((scene) => scene.id),
+    attempts.map(([id]) => id));
+  for (const [id, count, source] of attempts) {
+    const scene = SCENES[id];
+    assert.match(scene.calibration.captureSource, new RegExp(source));
+    const file = readFileSync(new URL(`../public${scene.assetUrl}`, import.meta.url));
+    const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    assert.equal(validateSplatBuffer(bytes), count, id);
+  }
 });
 
 test('scene ingestion rejects missing or invalid navigation calibration before loading', async () => {
