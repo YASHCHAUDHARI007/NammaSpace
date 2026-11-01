@@ -10,6 +10,12 @@ export default function WelcomeOverlay({
   onTriggerFileUpload
 }) {
   if (!sceneConfig) return null;
+  const hasObstacleProxies = sceneConfig.colliders?.length > 0;
+  const sourceDescription = sceneConfig.id === 'classroom-pilot'
+    ? 'Explore this room reconstructed from the supplied videos.'
+    : ['classroom-c5306-single-video', 'classroom-single-video'].includes(sceneConfig.id)
+      ? 'Explore this room reconstructed from one continuous video.'
+      : 'Explore this spatial scene.';
 
   return (
     <div className="welcome-backdrop" role="dialog" aria-modal="true" aria-labelledby="welcome-heading">
@@ -23,8 +29,10 @@ export default function WelcomeOverlay({
             Step inside.
           </h1>
           <p className="welcome-subtitle">
-            Explore this room reconstructed from one continuous video. Walk through the 3D view,
-            inspect the navigation preview, and try obstacle-aware routes.
+            {`${sourceDescription} Walk through the 3D view`
+              + (hasObstacleProxies
+                ? ', inspect the navigation preview, and try obstacle-aware routes.'
+                : ' and inspect the areas recorded by the camera.')}
           </p>
         </div>
 
@@ -56,7 +64,9 @@ export default function WelcomeOverlay({
           <div className="welcome-controls-grid" aria-label="Viewer Control Instructions">
             <div className="welcome-control-tile">
               <span className="welcome-tile-keys">W A S D / Arrows</span>
-              <span className="welcome-tile-label">Walk &amp; strafe with wall/obstacle collision</span>
+              <span className="welcome-tile-label">{hasObstacleProxies
+                ? 'Walk & strafe with wall/obstacle collision'
+                : 'Walk & strafe within visual preview limits'}</span>
             </div>
             <div className="welcome-control-tile">
               <span className="welcome-tile-keys">Mouse / Drag</span>
