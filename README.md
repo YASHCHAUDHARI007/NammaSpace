@@ -176,3 +176,4 @@ The sample GLB and `sample-capture.splat` are generated demonstration fixtures. 
 The current C5307 classroom's physical dimensions are unknown. Its walking floor is aligned to Y = 0, and the median camera clearance defines one relative scene unit. The walking limits are visual estimates. No furniture collision is verified for this model. Detail can blur in views that the recording does not cover well.
 
 Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.
+END
