@@ -638,7 +638,47 @@ export const SCENES = {
         lookAt: [0, 0.8, -0.1]
       }
     ]
-  }
+  },
+
+  'room-01-reconstruction': {
+    id: 'room-01-reconstruction',
+    name: 'Room 01 — Sony 3D Reconstruction',
+    shortLabel: 'Room 01 (.glb)',
+    mode: 'glb',
+    sceneType: 'COLMAP dense mesh (.glb)',
+    reconstructionStatus: 'Sony camera reconstruction; scale and floor alignment unverified',
+    navigationStatus: 'visual-inspection-only',
+    eyeHeight: 1.68,
+    calibration: {
+      captureSource: 'Sony A7S III room footage; provisional alignment',
+      upAxis: 'Y',
+      originDescription: 'Provisional origin; floor and orientation not physically calibrated',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      referenceObject: 'Unmeasured room geometry; relative scale only',
+      referenceHeightSceneUnits: 1
+    },
+    isReconstructed: true,
+    assetUrl: '/models/room-01.glb',
+    dimensionsLabel: 'Approx. 10.32 × 7.91 × 11.66 reconstruction units',
+    description:
+      'Dense mesh reconstructed from Sony camera footage using COLMAP. Visual inspection only; metric scale, floor alignment, orientation, spawn, and collision boundaries remain uncalibrated.',
+    spawn: {
+      position: [1.4, 1.68, 0.47],
+      yaw: 0,
+      pitch: -0.05
+    },
+    roomBounds: {
+      minX: -3.75,
+      maxX: 6.57,
+      minZ: -5.36,
+      maxZ: 6.30,
+      floorY: 0,
+      ceilingY: 8.0
+    },
+    colliders: [],
+    pois: []
+  },
 };
 
 export const DEFAULT_SCENE_ID = 'classroom-c5307-single-video';

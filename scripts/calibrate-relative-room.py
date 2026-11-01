@@ -136,7 +136,7 @@ def main() -> None:
         np.linalg.norm(corners["br"] - corners["bl"]),
     ]) * scale)
     result = {
-        "reference": "manually marked outer projector-screen border in source-video frames",
+    "reference": "manually marked visible projector-screen border in source-video frames",
         "unit_label": "relative scene units",
         "metric_scale_known": False,
         "room_dimensions_known": False,
