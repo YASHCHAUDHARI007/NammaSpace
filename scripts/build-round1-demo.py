@@ -14,39 +14,40 @@ from xml.sax.saxutils import escape
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "assets/C5306.MP4"
-VIEWER = ROOT / "outputs/classroom/single-video-C5306/demo-recordings/viewer-walkthrough.mov"
-WORK = ROOT / "outputs/classroom/single-video-C5306/demo-build"
+SOURCE = ROOT / "assets/C5307.MP4"
+VIEWER = ROOT / "outputs/classroom/single-video-C5307-local-2026-11-01/demo-recordings/viewer-walkthrough.mp4"
+WORK = ROOT / "outputs/classroom/single-video-C5307-local-2026-11-01/demo-build"
 OUTPUT = ROOT / "submission/round1-demonstration.mp4"
+SPLATS = (ROOT / "public/scenes/classroom-c5307-single-video.splat").stat().st_size // 32
 
 
 SEGMENTS = [
     dict(kind="card", duration=10, heading="ONE VIDEO. ONE ROOM.",
          lines=["Namma Space | Round 1 demonstration", "3D reconstruction and free roaming"],
          speech="This classroom was reconstructed from one continuous Sony video. The browser lets us walk through the result."),
-    dict(kind="source", start=1, duration=47,
-         speech="This is C five three zero six M P four, the sole image source. The camera records the floor, stage and seating from one continuous path. It points down for much of the clip, so the upper walls and ceiling have weak coverage. No photographs or frames from another video were used."),
+    dict(kind="source", start=0, duration=30,
+         speech="This is C five three zero seven, the only image source. The continuous video shows the floor, stage, seating, walls, and ceiling. Some later frames contain people, so we excluded them from the selected training run. We used no still photos or other video."),
     dict(kind="card", duration=24, heading="RECONSTRUCTION PIPELINE",
-         lines=["198 of 198 frames registered at 4 fps", "VGGT depth validated against video camera poses", "20,000 training steps | 873,736 Gaussian splats"],
-         speech="All one hundred ninety eight sampled frames registered on one camera route. VGGT supplied depth for validated points. We used the video camera poses because they were more consistent. Nerfstudio trained the model for twenty thousand steps on the N S T cluster."),
+         lines=["242 of 242 frames registered at 8 fps", "35 VGGT depth maps validated against video points", f"20,000 local GPU steps | {SPLATS:,} Gaussian splats"],
+         speech="All two hundred forty two sampled frames registered on one camera route. VGGT supplied validated depth points. We trained the selected model for twenty thousand steps on a local Apple GPU using person-free frames."),
     dict(kind="card", duration=15, heading="RELATIVE SCALE",
          lines=["Floor aligned to the viewer", "Physical room dimensions: unknown", "Walk limits and route: visual estimates"],
          speech="The floor sets the scene orientation. No physical length was measured. Positions and routes use relative scene units."),
     dict(kind="viewer", start=0, duration=20,
-         speech="This is the actual local web viewer. The C five three zero six classroom loads by default. The stage, desks, chairs, and aisle are visible."),
-    dict(kind="viewer", start=21, duration=17,
-         speech="The capture guide names the sole source video and describes the processing steps. It also states the coverage and navigation limits."),
+         speech="This is the actual local web viewer. The C five three zero seven classroom loads by default. The stage, ceiling, desks, and chairs are visible."),
+    dict(kind="viewer", start=20, duration=17,
+         speech="We walk through the recorded aisle and return to the start view. The viewer reports the camera position in relative scene units."),
     dict(kind="viewer", start=38, duration=17,
-         speech="The viewer can search for a point of interest and display a route along the recorded front aisle."),
+         speech="Mouse movement turns the view toward the walls and seating. Detail is strongest near positions seen by the video camera."),
     dict(kind="viewer", start=55, duration=15,
-         speech="The route uses relative scene units. It is a visual guide, not a measured clearance map."),
-    dict(kind="viewer", start=95, duration=10,
-         speech="Walking beyond well observed views exposes dark gaps and ghosting. This is the current coverage limit."),
-    dict(kind="viewer", start=104, duration=12,
-         speech="Reset returns to the recognizable room. The viewer also shows the source and method in its guide."),
+         speech="The capture guide names the sole source video, the local training method, and the limits of this preview."),
+    dict(kind="viewer", start=75, duration=10,
+         speech="We move ahead and inspect the room from another position along the aisle."),
+    dict(kind="viewer", start=102, duration=12,
+         speech="Reset returns to the clear front-facing view. Some side furniture remains soft from unsupported angles."),
     dict(kind="card", duration=25, heading="RESULT AND LIMITS",
-         lines=["C5306.MP4 only | 198 frames | 873,736 splats", "Code and model on GitHub main | viewer runs locally", "Upper walls and unsupported views still need coverage"],
-         speech="The model and viewer show a clear central room with less ghosting than the earlier trial. The code and model are on GitHub main. Upper surfaces remain incomplete because the video did not observe them well. The technical abstract records the method and limits."),
+         lines=[f"C5307.MP4 only | 242 registered frames | {SPLATS:,} splats", "Code and model on GitHub main | viewer runs locally", "Some side furniture still needs better video coverage"],
+         speech="The model shows a clear central room with reduced ghosting. The code and model are on GitHub main. The viewer runs locally. Some side furniture remains soft where the video did not provide enough distinct views."),
 ]
 
 
@@ -74,7 +75,7 @@ def card(path: Path, heading: str, lines: list[str]) -> None:
 <text x="120" y="310" font-family="Arial" font-size="88" font-weight="bold" fill="#f4f3eb">{escape(heading)}</text>
 <rect x="120" y="370" width="1680" height="4" fill="#629d70"/>
 {rows}
-<text x="120" y="990" font-family="Arial" font-size="25" fill="#9db4a3">C5306.MP4 only  |  Room dimensions unknown</text>
+<text x="120" y="990" font-family="Arial" font-size="25" fill="#9db4a3">C5307.MP4 only  |  Room dimensions unknown</text>
 </svg>'''
     source = path.with_suffix(".svg")
     source.write_text(svg)
@@ -83,7 +84,7 @@ def card(path: Path, heading: str, lines: list[str]) -> None:
 
 def main() -> None:
     if not SOURCE.is_file() or not VIEWER.is_file():
-        raise SystemExit("Need assets/C5306.MP4 and the reviewed viewer-walkthrough.mov")
+        raise SystemExit("Need assets/C5307.MP4 and the reviewed viewer-walkthrough.mp4")
     WORK.mkdir(parents=True, exist_ok=True)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     clips = []
@@ -95,6 +96,8 @@ def main() -> None:
             run(["say", "-v", "Samantha", "-r", "155", "-o", str(voice), item["speech"]])
         length = item["duration"]
         voice_length = media_duration(voice)
+        if voice_length < 0.1:
+            raise SystemExit(f"Narration {index} has no audio; check macOS say output")
         if voice_length > length - 0.25:
             raise SystemExit(f"Narration {index} takes {voice_length:.1f}s; segment is {length}s")
         if item["kind"] == "card":

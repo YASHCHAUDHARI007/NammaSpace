@@ -444,6 +444,57 @@ export default function App() {
                     </p>
                   </div>
                 </>
+              ) : activeSceneId === 'classroom-c5307-single-video' ? (
+                <>
+                  <div className="drawer-section">
+                    <h4><Camera size={15} /><span>1. Video Source</span></h4>
+                    <p>
+                      This room uses only the 30.24-second <code>C5307.MP4</code> video.
+                      It does not use still photos or frames from other videos.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
+                    <p>
+                      All 242 frames sampled at 8 fps registered in one camera route.
+                      PyCOLMAP estimated the camera poses. VGGT depth was checked on 35
+                      frames and supplied initial points. We trained the Gaussian model
+                      for 20,000 steps on a local Apple GPU using 149 person-free frames.
+                    </p>
+                    <p>
+                      The fitted walking floor sets the scene orientation. Camera clearance
+                      sets a relative scale. No physical room size was measured.
+                    </p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
+                    <p>
+                      The stage, ceiling, walls, and central seating are clear near recorded
+                      camera positions. Some side furniture softens from other viewpoints.
+                      Walking limits are visual estimates. Furniture collision has not
+                      been verified for this scene.
+                    </p>
+                  </div>
+                </>
+              ) : (activeSceneId.startsWith('classroom-c5307-') || activeSceneId === 'classroom-c5305-one-video') ? (
+                <>
+                  <div className="drawer-section">
+                    <h4><Camera size={15} /><span>1. Video Source</span></h4>
+                    <p>{activeScene.calibration.captureSource}. This model uses no still photos or other videos.</p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Cpu size={15} /><span>2. Reconstruction</span></h4>
+                    <p>{activeScene.description}</p>
+                  </div>
+                  <div className="drawer-section">
+                    <h4><Navigation size={15} /><span>3. Coverage and Navigation</span></h4>
+                    <p>
+                      The floor and walking limits use relative scene units. No physical room
+                      size or furniture collision has been verified. Views with weak video
+                      coverage can show blur or missing detail.
+                    </p>
+                  </div>
+                </>
               ) : (
               <>
               <div className="drawer-section">

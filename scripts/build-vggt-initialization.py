@@ -17,6 +17,8 @@ import numpy as np
 from PIL import Image
 import pycolmap
 
+from person_point_filter import PersonPointFilter
+
 
 WORLD_TO_NERFSTUDIO = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], dtype=float)
 
@@ -42,6 +44,7 @@ def main() -> None:
     parser.add_argument('validation', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('--grid-step', type=int, default=6)
+    parser.add_argument('--mask-dir', type=Path, help='COLMAP masks for filtering sparse person points')
     args = parser.parse_args()
     if args.output.exists() or args.grid_step < 2:
         parser.error('Output must be new and grid step must be at least 2')
@@ -50,6 +53,7 @@ def main() -> None:
     fits = {row['image']: row for row in json.loads(args.validation.read_text())['frames']
             if row.get('slope', 0) > 0 and row.get('median_relative_error', 1) < 0.05}
     model = pycolmap.Reconstruction(str(args.model))
+    person_filter = PersonPointFilter(model, args.mask_dir)
     images = {image.name: image for image in model.images.values() if image.has_pose}
     sparse_xyz = np.array([point.xyz for point in model.points3D.values()])
     envelope_min = np.quantile(sparse_xyz, .005, axis=0) - 1.5
@@ -57,7 +61,7 @@ def main() -> None:
     points = []
     sparse_count = 0
     for point in model.points3D.values():
-        if point.error > 2.5 or len(point.track.elements) < 3:
+        if point.error > 2.5 or person_filter.count_clean_views(point) < 3:
             continue
         xyz = WORLD_TO_NERFSTUDIO @ np.asarray(point.xyz, dtype=float)
         points.append((xyz.astype(np.float32), np.asarray(point.color, dtype=np.uint8)))
@@ -112,6 +116,14 @@ def main() -> None:
         except OSError:
             shutil.copy2(source, destination)
     shutil.copy2(args.source_dataset / 'transforms.json', output / 'transforms.json')
+    if (args.source_dataset / 'masks').is_dir():
+        (output / 'masks').mkdir()
+        for source in (args.source_dataset / 'masks').glob('*.png'):
+            destination = output / 'masks' / source.name
+            try:
+                os.link(source, destination)
+            except OSError:
+                shutil.copy2(source, destination)
     write_ply(output / 'sparse_pc.ply', points)
     summary = {
         'source_video_frames': len(list((args.source_dataset / 'images').glob('*.jpg'))),
