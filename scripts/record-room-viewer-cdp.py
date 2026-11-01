@@ -121,11 +121,12 @@ def main() -> None:
         (8, "keyDown", "KeyW"), (9.2, "keyUp", "KeyW"),
         (23, "keyDown", "KeyS"), (24.4, "keyUp", "KeyS"),
         (33, "keyDown", "KeyR"), (33.1, "keyUp", "KeyR"),
-        (55, "guideOpen", None), (69, "guideClose", None),
+        (55, "keyDown", "KeyR"), (55.1, "keyUp", "KeyR"),
+        (55.3, "guideOpen", None), (69, "guideClose", None),
         (74, "keyDown", "KeyW"), (75.2, "keyUp", "KeyW"),
         (102, "keyDown", "KeyR"), (102.1, "keyUp", "KeyR"),
     ]
-    for start, pixels in ((15, 190), (41, -380), (82, 280), (91, -280)):
+    for start, pixels in ((15, 100), (41, -100), (82, 100), (91, -100)):
         actions.append((start, "mousePressed", (950, 490)))
         for step in range(1, 13):
             actions.append((start + step * 0.12, "mouseMoved",
