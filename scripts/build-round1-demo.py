@@ -96,6 +96,8 @@ def main() -> None:
             run(["say", "-v", "Samantha", "-r", "155", "-o", str(voice), item["speech"]])
         length = item["duration"]
         voice_length = media_duration(voice)
+        if voice_length < 0.1:
+            raise SystemExit(f"Narration {index} has no audio; check macOS say output")
         if voice_length > length - 0.25:
             raise SystemExit(f"Narration {index} takes {voice_length:.1f}s; segment is {length}s")
         if item["kind"] == "card":
