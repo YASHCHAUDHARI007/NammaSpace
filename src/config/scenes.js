@@ -14,6 +14,55 @@ export const DEFAULT_STANDING_HEIGHT = 1.68; // world units; metric only in cali
 export const PLAYER_RADIUS = 0.36; // world-unit horizontal collision cylinder radius
 
 export const SCENES = {
+  'classroom-c5306-single-video': {
+    id: 'classroom-c5306-single-video',
+    name: 'Captured Classroom — C5306 Video',
+    shortLabel: 'C5306 One-Video Room',
+    mode: 'splat',
+    sceneType: '3D Gaussian Splatting (.splat)',
+    reconstructionStatus: 'Reconstructed only from C5306.MP4; relative scale; room dimensions unknown',
+    navigationStatus: 'pilot',
+    roomBoundsKnown: false,
+    showCalibrationStage: false,
+    isReconstructed: true,
+    eyeHeight: 1.08,
+    assetUrl: '/scenes/classroom-c5306-single-video.splat',
+    dimensionsLabel: 'Room dimensions unknown',
+    description:
+      'This model uses 198 frames from one Sony video. It shows the floor, stage, and seating. The camera points down for much of the clip, so the upper room has limited coverage. Scale and navigation limits are visual estimates.',
+    calibration: {
+      captureSource: 'assets/C5306.MP4, 49.44 seconds; 198 registered frames at 4 fps',
+      upAxis: 'Y',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      originDescription: 'Fitted floor near the front turn of the video camera route',
+      referenceObject: 'Median camera clearance above the fitted video floor',
+      referenceHeightSceneUnits: 1
+    },
+    spawn: {
+      position: [-1.42, 1.08, 2.08],
+      yaw: -0.401,
+      pitch: -0.533
+    },
+    roomBounds: {
+      minX: -3.5,
+      maxX: 7.2,
+      minZ: -0.5,
+      maxZ: 9.5,
+      floorY: 0,
+      ceilingY: 3.5
+    },
+    colliders: [],
+    pois: [{
+      id: 'c5306-front',
+      name: 'Captured Front Aisle',
+      category: 'Classroom',
+      description: 'A recorded camera position beside the front stage.',
+      position: [0, 1, 0],
+      waypoint: [-0.7, 0.8],
+      lookAt: [0, 1, 0]
+    }]
+  },
   'classroom-single-video': {
     id: 'classroom-single-video',
     name: 'Captured Classroom — One Video',
@@ -431,7 +480,7 @@ export const SCENES = {
   }
 };
 
-export const DEFAULT_SCENE_ID = 'classroom-single-video';
+export const DEFAULT_SCENE_ID = 'classroom-c5306-single-video';
 
 export function getSceneConfig(sceneId) {
   return SCENES[sceneId] || SCENES[DEFAULT_SCENE_ID];

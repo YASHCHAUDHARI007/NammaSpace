@@ -2,7 +2,7 @@
 ### *Your space, reimagined.*
 **Indoor 3D reconstruction and spatial navigation**
 
-**Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5304.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes, with first-person movement, preview collision boxes, and A* floor routes. The classroom's physical dimensions are unknown; its navigation scale is relative.
+**Namma Space** is a browser viewer for indoor 3D scenes. Its default classroom was reconstructed from one continuous Sony video, `assets/C5306.MP4`. Built with **Next.js App Router**, **React**, and **Three.js**, it renders `.splat` Gaussian Splats and `.glb` meshes, with first-person movement, preview collision boxes, and A* floor routes. The classroom's physical dimensions are unknown; its navigation scale is relative.
 
 Read the [current classroom update](./docs/classroom-project-update.md) for the result, checks, and limits. The [reconstruction report](./docs/single-video-reconstruction.md) gives the capture SOP and full processing steps.
 
