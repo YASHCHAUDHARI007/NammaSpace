@@ -37,23 +37,27 @@ export function validateSceneConfig(scene) {
     throw new Error('Procedural demo geometry cannot be declared a real reconstruction.');
   }
   const b = scene.roomBounds;
+  const eyeHeight = scene.eyeHeight ?? DEFAULT_STANDING_HEIGHT;
+  if (!Number.isFinite(eyeHeight) || eyeHeight <= 0.5 || eyeHeight >= 2.2) {
+    throw new Error('Invalid eyeHeight: set a plausible positive camera height in scene units.');
+  }
   if (!b || !['minX', 'maxX', 'minZ', 'maxZ', 'floorY', 'ceilingY'].every((key) => Number.isFinite(b[key])) ||
-      b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= DEFAULT_STANDING_HEIGHT) {
-    throw new Error('Invalid roomBounds: set finite X/Z limits, floorY=0, and ceilingY above standing eye height after aligning the asset to meters and Y-up.');
+      b.minX >= b.maxX || b.minZ >= b.maxZ || b.floorY !== 0 || b.ceilingY <= eyeHeight) {
+    throw new Error('Invalid roomBounds: set finite X/Z limits, floorY=0, and ceilingY above standing eye height after aligning the asset to Y-up.');
   }
   if (!Array.isArray(scene.colliders)) {
-    throw new Error('Missing colliders: provide an explicit array of measured furniture/wall AABBs (or [] for a verified empty room).');
+    throw new Error('Missing colliders: provide an explicit array of furniture/wall proxy AABBs (or [] for a verified empty room).');
   }
   for (const collider of scene.colliders) {
     if (!collider || !['minX', 'maxX', 'minY', 'maxY', 'minZ', 'maxZ'].every((key) => Number.isFinite(collider[key])) ||
         collider.minX >= collider.maxX || collider.minY >= collider.maxY || collider.minZ >= collider.maxZ) {
-      throw new Error(`Invalid collider "${collider?.id || 'unnamed'}": use finite ordered min/max X, Y, and Z bounds in meters.`);
+      throw new Error(`Invalid collider "${collider?.id || 'unnamed'}": use finite ordered min/max X, Y, and Z bounds in scene units.`);
     }
   }
   const vector = (value, length) => Array.isArray(value) && value.length === length && value.every(Number.isFinite);
-  if (!vector(scene.spawn?.position, 3) || scene.spawn.position[1] !== DEFAULT_STANDING_HEIGHT ||
+  if (!vector(scene.spawn?.position, 3) || scene.spawn.position[1] !== eyeHeight ||
       !Number.isFinite(scene.spawn.yaw) || !Number.isFinite(scene.spawn.pitch)) {
-    throw new Error(`Invalid spawn: set finite [x, ${DEFAULT_STANDING_HEIGHT}, z], yaw, and pitch in the aligned world frame.`);
+    throw new Error(`Invalid spawn: set finite [x, ${eyeHeight}, z], yaw, and pitch in the aligned world frame.`);
   }
   if (!Array.isArray(scene.pois)) throw new Error('Missing pois: provide an array, even when empty.');
   const collision = new CollisionSystem(scene);
@@ -69,12 +73,16 @@ export function validateSceneConfig(scene) {
   }
   if (scene.isReconstructed) {
     const c = scene.calibration;
-    if (!c || typeof c.captureSource !== 'string' || !c.captureSource.trim() ||
-        c.upAxis !== 'Y' || c.metersPerAssetUnit !== 1 ||
-        typeof c.originDescription !== 'string' || !c.originDescription.trim() ||
-        !Number.isFinite(c.referenceDistanceMeters) || c.referenceDistanceMeters <= 0 ||
-        !Number.isFinite(c.referenceDistanceAssetUnits) || c.referenceDistanceAssetUnits <= 0) {
-      throw new Error('Real capture calibration is incomplete: document captureSource, Y-up, 1 meter per asset unit, originDescription, and positive measured reference distances.');
+    const common = c && typeof c.captureSource === 'string' && c.captureSource.trim() &&
+      c.upAxis === 'Y' && typeof c.originDescription === 'string' && c.originDescription.trim();
+    const relative = c?.scaleType === 'relative' && c.sceneUnitsPerAssetUnit === 1 &&
+      typeof c.referenceObject === 'string' && c.referenceObject.trim() &&
+      Number.isFinite(c.referenceHeightSceneUnits) && c.referenceHeightSceneUnits > 0;
+    const metric = c?.scaleType !== 'relative' && c?.metersPerAssetUnit === 1 &&
+      Number.isFinite(c.referenceDistanceMeters) && c.referenceDistanceMeters > 0 &&
+      Number.isFinite(c.referenceDistanceAssetUnits) && c.referenceDistanceAssetUnits > 0;
+    if (!common || (!relative && !metric)) {
+      throw new Error('Real capture calibration is incomplete: document the Y-up origin and either a measured metric reference or an explicit relative-scale reference.');
     }
   }
 }
@@ -306,7 +314,9 @@ async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
   const splatCount = validateSplatBuffer(buffer);
   const rootGroup = new THREE.Group();
   rootGroup.name = `GaussianSplatScene_${sceneConfig.id}`;
-  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+  if (sceneConfig.showCalibrationStage !== false) {
+    rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+  }
   const viewer = new GaussianSplats3D.DropInViewer({
     gpuAcceleratedSort: false,
     sharedMemoryForWorkers: false

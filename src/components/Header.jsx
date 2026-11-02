@@ -62,6 +62,8 @@ export default function Header({
   let statusClass = 'status-dot';
   let statusText = activeScene?.navigationStatus === 'preview'
     ? 'Uncalibrated Preview • Placeholder Bounds'
+    : activeScene?.roomBoundsKnown === false
+      ? 'Room Size Unknown'
     : activeScene?.isReconstructed
       ? 'Calibrated Capture'
       : 'Synthetic Fixture';
@@ -204,7 +206,7 @@ export default function Header({
           type="button"
           className="icon-btn"
           onClick={onOpenGuide}
-          title="Smartphone Capture SOP & Reconstruction Pipeline Guide"
+            title="One-video capture SOP & reconstruction pipeline guide"
         >
           <BookOpen size={15} />
           <span>Capture SOP</span>
