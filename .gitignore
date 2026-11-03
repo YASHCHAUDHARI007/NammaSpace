@@ -57,6 +57,7 @@ data/
 !public/scenes/classroom-c5307-colmap-clean-20k.splat
 !public/scenes/classroom-c5307-vggt-filled-20k.splat
 !public/scenes/classroom-c5307-first15-baseline.splat
+!public/scenes/whatsapp-corridor-20261102.splat
 *.ckpt
 *.pth
 *.pt

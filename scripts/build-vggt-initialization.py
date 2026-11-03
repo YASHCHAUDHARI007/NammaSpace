@@ -99,6 +99,10 @@ def main() -> None:
         world = camera_points @ pose[:3, :3].T + pose[:3, 3]
         bounded = (world >= envelope_min).all(axis=1) & (world <= envelope_max).all(axis=1)
         world, px, py = world[bounded], px[bounded], py[bounded]
+        if args.mask_dir:
+            mask = np.asarray(Image.open(args.mask_dir / f'{name}.png').convert('L'))
+            unmasked = mask[np.rint(py).astype(int), np.rint(px).astype(int)] > 0
+            world, px, py = world[unmasked], px[unmasked], py[unmasked]
         pixels = np.asarray(Image.open(args.source_dataset / 'images' / name).convert('RGB'))
         colors = pixels[np.rint(py).astype(int), np.rint(px).astype(int)]
         nerfstudio_points = world @ WORLD_TO_NERFSTUDIO.T

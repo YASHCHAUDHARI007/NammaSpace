@@ -298,6 +298,37 @@ export const SCENES = {
       }
     ]
   },
+  'whatsapp-corridor-20261102': {
+    id: 'whatsapp-corridor-20261102',
+    name: 'WhatsApp video — Corridor & stair lobby',
+    shortLabel: 'New corridor capture',
+    mode: 'splat',
+    sceneType: '3D Gaussian Splatting (.splat)',
+    reconstructionStatus: 'One WhatsApp video; trained locally with VGGT; person regions estimated from the same video; relative scale',
+    navigationStatus: 'visual-inspection-only',
+    roomBoundsKnown: false,
+    showCalibrationStage: false,
+    isReconstructed: true,
+    eyeHeight: 1,
+    cameraFov: 38,
+    assetUrl: '/scenes/whatsapp-corridor-20261102.splat',
+    dimensionsLabel: 'Room dimensions unknown',
+    description:
+      'This corridor and stair lobby come from the supplied 61-second WhatsApp video. The floor is aligned from the recording. Detail softens away from the recorded path and around surfaces hidden by the seated person. Walking limits are estimates; stair and furniture collisions are unverified.',
+    calibration: {
+      captureSource: 'assets/WhatsApp Video 2026-11-02 at 00.25.30.mp4; 61.11 seconds; 361 registered frames; 344 selected frames with same-video person fills',
+      upAxis: 'Y',
+      scaleType: 'relative',
+      sceneUnitsPerAssetUnit: 1,
+      originDescription: 'Walking floor fitted from the video below the frame_0229.jpg camera position',
+      referenceObject: 'Median camera clearance above the fitted floor',
+      referenceHeightSceneUnits: 1
+    },
+    spawn: { position: [0.0333, 1, 0.0005], yaw: -0.67797, pitch: -0.22283 },
+    roomBounds: { minX: -1.3, maxX: 1.3, minZ: -1.8, maxZ: 18, floorY: 0, ceilingY: 3 },
+    colliders: [],
+    pois: []
+  },
   'classroom-pilot': {
     id: 'classroom-pilot',
     name: 'Captured Classroom — Screen-Scaled Pilot',
