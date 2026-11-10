@@ -62,6 +62,8 @@ export default function Header({
   let statusClass = 'status-dot';
   let statusText = activeScene?.navigationStatus === 'preview'
     ? 'Uncalibrated Preview • Placeholder Bounds'
+    : activeScene?.roomBoundsKnown === false
+      ? 'Room Size Unknown'
     : activeScene?.isReconstructed
       ? 'Calibrated Capture'
       : 'Synthetic Fixture';
@@ -151,7 +153,7 @@ export default function Header({
           <div className="poi-dropdown" role="listbox" aria-label="Points of Interest">
             <div className="poi-dropdown-header">
               <span>Spatial Points of Interest ({filteredPois.length})</span>
-              <span>A* Obstacle Route</span>
+              <span>{activeScene.colliders?.length ? 'A* Obstacle Route' : 'A* Aisle Route'}</span>
             </div>
             {filteredPois.length === 0 ? (
               <div style={{ padding: '10px', fontSize: '12.5px', color: 'var(--color-ivory-dim)' }}>
@@ -204,7 +206,7 @@ export default function Header({
           type="button"
           className="icon-btn"
           onClick={onOpenGuide}
-          title="Smartphone Capture SOP & Reconstruction Pipeline Guide"
+            title="One-video capture SOP & reconstruction pipeline guide"
         >
           <BookOpen size={15} />
           <span>Capture SOP</span>

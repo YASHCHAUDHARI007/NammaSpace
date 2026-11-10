@@ -303,11 +303,14 @@ const SceneViewer = forwardRef(function SceneViewer(
 
         // Configure collision bounds + any dynamically extracted mesh AABBs
         collision.configure(sceneConfig);
+        controller.standingHeight = collision.standingHeight;
         if (result.extractedColliders?.length > 0) {
           collision.addMeshColliders(result.extractedColliders);
         }
 
         // Position camera at scene spawn point
+        stage.camera.fov = sceneConfig.cameraFov ?? 68;
+        stage.camera.updateProjectionMatrix();
         const spawn = sceneConfig.spawn || {
           position: [0, 1.68, 3.0],
           yaw: 0,

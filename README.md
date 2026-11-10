@@ -1,114 +1,139 @@
-# NAMMA SPACE
-### *Your space, reimagined.*
-**IIT Bombay Techfest 2026–27 | Indoor 3D Digital Twin & Spatial Navigation Platform**
+# Namma Space
 
-**Namma Space** is a web-based indoor spatial computing platform for viewing smartphone-captured indoor environments as interactive, navigable 3D digital twins. Built with **Next.js App Router**, **React**, and **Three.js**, it pairs a modular 3D asset ingestion layer (`.glb` meshes and `.splat` 3D Gaussian Splats) with first-person movement, Circle-vs-AABB sliding collision physics, and obstacle-aware A* floor pathfinding.
+A browser-based viewer for reconstructed indoor spaces, with first-person exploration and configurable navigation.
 
----
+Namma Space displays 3D Gaussian splats and glTF meshes through a Next.js, React, and Three.js interface. Capture and reconstruction run outside the browser. The viewer loads the resulting assets for interactive walkthroughs, scene comparison, and navigation previews.
 
-## 1. Key Capabilities (Round 1 + Round 2 Architecture Foundations)
+Developed for **IIT Bombay Techfest 2026–27**.
 
-- **Three Modular Scene Modes (`src/viewer/sceneLoader.js`):**
-  1. **Procedural Baseline (`mode: 'demo'`):** Full-scale `10m × 8m × 3.2m` reference interior built with Three.js geometry (work table, modular L-sofa, coffee table, walnut storage cabinet, central calibration plinth, and east telemetry console). Clearly labeled as manual baseline geometry—never misrepresented as AI output.
-  2. **Reconstructed Mesh Pipeline (`mode: 'glb'`):** Loads standard binary glTF 2.0 (`.glb` / `.gltf`) scans via Three.js `GLTFLoader` + `DRACOLoader` with real byte-transfer progress and explicitly configured AABB collision volumes.
-  3. **3D Gaussian Splat Pipeline (`mode: 'splat'`):** Validates standard 32-byte `.splat` files, then renders them through `@mkkellogg/gaussian-splats-3d` with anisotropic scale, quaternion rotation, RGBA opacity, depth sorting, and explicit proxy collision bounds.
-- **Instant Local Asset Import:** Click **"Import Asset"** (or **"Import .glb / .splat"** on the Welcome screen) to load any `.glb`, `.gltf`, or `.splat` file directly from your device without modifying code.
-- **First-Person Spatial Controller (`src/viewer/controls.js`):**
-  - `PointerLockControls` mouse look + drag-to-look fallback and mobile touch D-pad.
-  - Normalized horizontal movement vector so diagonal `W+A` / `W+D` movement is never faster than straight movement.
-  - Standing eye-height constraint (`1.68m`) and configurable walking speed (`Slow 2.0m/s`, `Normal 3.2m/s`, `Fast 4.8m/s`, plus `Shift` pace boost).
-  - Automatic key release on `ESC`, pointer-lock exit, window blur, or tab switch.
-- **Deterministic Collision & Obstacle-Aware A* Wayfinding (`src/viewer/collision.js`):**
-  - Circle-vs-AABB horizontal collision resolution with smooth wall and furniture sliding.
-  - Live toggleable **Collider Wireframes** (`Colliders` button in the header) to inspect room boundaries and furniture collision volumes.
-  - Searchable **Points of Interest (POIs)** with real 2D walkable-grid **A* pathfinding** and line-of-sight smoothing that routes around furniture obstacles.
+## Getting started
 
----
+Requirements: Node.js 20.9 or later, npm, and a browser with WebGL support.
 
-## 2. Project Structure
-
-```text
-src/
-  app/
-    layout.jsx           # HTML shell, global CSS, metadata, fonts, and theme color
-    page.jsx             # Server-rendered home route
-  components/
-    Header.jsx            # Brand bar, scene switcher, POI search, collider & SOP toggles
-    WelcomeOverlay.jsx    # "Step inside." entry modal with provenance & control guide
-    ViewerControls.jsx    # Pointer-lock toggle, speed selector, reset view, mobile D-pad
-    LoadingState.jsx      # Real byte-progress loading overlay (no fake percentages)
-    ErrorState.jsx        # Actionable error diagnostics with 1-click baseline fallback
-  viewer/
-    createScene.js        # WebGL stage setup, procedural demo room, POI & A* route visuals
-    SceneViewer.jsx       # React Three.js lifecycle, resize, raycasting, telemetry loop
-    sceneLoader.js        # Modular loader for 'demo', 'glb', and 'splat' modes
-    controls.js           # First-person WASD + PointerLock + drag fallback controller
-    collision.js          # Circle-vs-AABB collision solver & 2D walkable grid A* pathfinder
-  config/
-    scenes.js             # Viewer registry: real reconstructions only (spawn, roomBounds, colliders, POIs)
-    fixtureScenes.js      # Synthetic demo/GLB/splat scenes used only by the test suite
-  styles/
-    global.css            # Design tokens (Warm Ivory, Deep Forest Green, Muted Sage, Charcoal)
-    viewer.css            # Translucent glass overlays, typography, responsive & mobile rules
-  App.jsx                 # Client-side application state & layout orchestrator
-next.config.mjs           # Next.js and output tracing configuration
-public/
-  scenes/
-    nammaspace-classroom.splat # Gaussian-splat scan of the classroom (COLMAP poses + Brush training)
-tests/fixtures/
-  sample-room-scan.glb    # Generated glTF 2.0 test mesh (not shown in the viewer)
-  sample-capture.splat    # Synthetic 32-byte `.splat` test asset (2,153 splats)
-docs/
-  capture-sop.md          # Smartphone room capture Standard Operating Procedure
-  reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space
-  architecture.md         # System architecture & Round 2 extension design
-```
-
----
-
-## 3. Local Setup & Commands
-
-### Prerequisites
-- **Node.js** `>= 18.18.0` and **npm** `>= 9.0.0`
-
-### Install & Run Development Server
 ```bash
+git clone https://github.com/LiteralKrishu/NammaSpace.git
+cd NammaSpace
 npm ci
 npm run dev
 ```
-Open `http://localhost:3000` in Chrome, Edge, Firefox, or Safari.
 
-### Tests, Production Build & Startup
-```bash
-npm test
-npm run build
-npm run start
+Open [localhost:3000](http://localhost:3000) and select **Explore the space**. The repository includes the viewer assets. Source videos and Python tools are not required to run the application.
+
+The default scene is the C5307 classroom, reconstructed from one continuous Sony video. Use the scene menu to compare reconstruction variants or open the procedural reference room. To open a scene directly, use its registry ID in the URL, for example:
+
+```text
+http://localhost:3000/?scene=demo-studio
 ```
-The App Router prerenders the page shell. The interactive application is a Client Component, and the WebGL viewport loads only in the browser. The existing styles, scene registry, and assets remain in place.
 
----
+## Features
 
-## 4. How to Capture & Import Your Own Reconstructed Room
+- **Scene rendering:** Load standard `.splat` Gaussian splats, `.glb` meshes, and `.gltf` scenes.
+- **First-person controls:** Walk with the keyboard, look with the mouse or drag gestures, and use touch movement controls on mobile.
+- **Local asset import:** Preview compatible files from your device through **Import Asset**.
+- **Navigation previews:** Search configured points of interest and display A* routes around defined obstacles.
+- **Collision inspection:** Show room boundaries and obstacle volumes with the **Colliders** overlay.
+- **Scene metadata:** Inspect capture sources, calibration status, loading progress, and scene statistics.
 
-1. **Capture the Room:** Follow [`docs/capture-sop.md`](./docs/capture-sop.md) to record overlapping perimeter and interior passes using a smartphone.
-2. **Reconstruct to `.glb` or `.splat`:** Follow [`docs/reconstruction-workflow.md`](./docs/reconstruction-workflow.md) using Polycam, Luma AI, RealityCapture, or COLMAP + Nerfstudio.
-3. **Load into Namma Space:**
-   - **Quick Browser Test:** Click **Import Asset** in the bottom-left Scene Information panel and select a `.glb`, `.splat`, or self-contained `.gltf` file. A `.gltf` that references separate buffers or textures needs those files at resolvable URLs; for local import, package the scene as `.glb` instead.
-   - **Permanent Configuration:** Copy your file into `public/models/` or `public/scenes/` and add an entry in [`src/config/scenes.js`](./src/config/scenes.js).
+Navigation features depend on each scene's configuration. The procedural reference room includes obstacle volumes and points of interest for testing these features.
 
----
+## Controls
 
-## 5. Deployment
+| Input | Action |
+| --- | --- |
+| `W`, `A`, `S`, `D` or arrow keys | Move |
+| Mouse with cursor locked, or click and drag | Look around |
+| `Shift` | Increase movement speed while held |
+| `R` | Reset the camera |
+| `E` | Select the point of interest under the reticle |
+| `Esc` | Release the cursor |
 
-Next.js writes its production output to `.next/`. The old Vite SPA rewrite was removed because it would route Next.js assets and pages to a nonexistent `index.html`.
+The viewer also provides speed, fullscreen, and camera reset controls. On mobile, use the on-screen movement pad.
 
-- **Vercel:** Import the repository as a Next.js project. Use `npm ci` and `npm run build`; keep the framework's default output settings.
-- **Other Node hosts:** Run `npm ci`, `npm run build`, then `npm run start`. Use a Next.js-compatible platform integration when deploying to a managed static host.
+## Importing a scene
 
----
+### Preview a local file
 
-## Asset format and spatial calibration
+Select **Import Asset** in the scene information panel, or **Import .glb / .splat** on the welcome screen.
 
-The included GLB and `.splat` assets are generated demonstration fixtures. They are not evidence of a smartphone reconstruction. The supported `.splat` format is the standard 32-byte little-endian layout: float32 XYZ position (bytes 0–11), float32 XYZ scale (12–23), uint8 RGBA (24–27), and uint8 quaternion WXYZ (28–31, mapped from bytes with `(value - 128) / 128`). The installed `@mkkellogg/gaussian-splats-3d` 0.4.7 parser handles covariance, rotation, opacity, and depth sorting; the loader rejects incomplete or invalid records. Other splat containers and PLY files require an explicit import pipeline.
+Supported formats are `.glb`, `.gltf`, and standard 32-byte `.splat` files. For local `.gltf` imports, embed all buffers and textures in the file. Use `.glb` for scenes with separate resources. Convert Gaussian PLY files and other splat containers before import.
 
-Imported assets use placeholder navigation bounds. Before enabling trustworthy navigation, measure the reconstructed scene's origin, orientation, floor height, and scale in meters. Set `spawn`, `roomBounds`, `colliders`, `pois`, and each POI `waypoint` in the same world coordinate frame. The viewer does not infer physical walkability from arbitrary mesh bounds or radiance splats. Toggle **Colliders** to inspect the proxies, then walk every boundary and route in the browser.
+Local imports use placeholder navigation bounds. They need calibration before they can support accurate navigation.
+
+### Register a scene
+
+1. Place mesh assets in `public/models/` or splat assets in `public/scenes/`.
+2. Add an entry to [src/config/scenes.js](src/config/scenes.js) with the asset path and mode: `glb` or `splat`.
+3. Align the scene to Y-up with the floor at `Y = 0`. Define its scale, camera spawn, room bounds, obstacle volumes, and points of interest in the same coordinate system.
+4. Inspect the **Colliders** overlay and test each boundary and route.
+
+See the [reconstruction workflow](docs/reconstruction-workflow.md) for asset preparation and the [scene calibration guide](docs/real-scan-pilot.md) for configuration requirements.
+
+## Development
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm test` | Run asset validation, collision, and pathfinding tests |
+| `npm run build` | Create a production build |
+| `npm run start` | Serve the production build |
+
+Run `npm run build` before `npm run start`. Both servers use port 3000 by default. To use another port, append `-- -p 3001` to either server command.
+
+### Project structure
+
+```text
+src/
+  app/          Next.js routes, layout, and metadata
+  components/   Viewer interface and controls
+  config/       Scene registry and navigation configuration
+  styles/       Global and viewer styles
+  viewer/       Rendering, asset loading, movement, collision, and routing
+  App.jsx       Application state and viewer composition
+public/
+  models/       Mesh assets
+  scenes/       Gaussian splat assets
+scripts/        Capture processing, reconstruction, training, and export tools
+tests/          Spatial engine tests and sample capture frames
+docs/           Capture, reconstruction, architecture, and verification guides
+```
+
+## Deployment
+
+For a Node.js host, install dependencies with `npm ci`, build with `npm run build`, and start with `npm run start`. The production build is written to `.next/`.
+
+For Vercel, import the repository as a Next.js project. Use `npm ci` as the install command and `npm run build` as the build command. Keep the framework's default output settings.
+
+To create a static export:
+
+```bash
+NAMMA_STATIC_EXPORT=1 npm run build
+```
+
+Serve the generated `out/` directory over HTTP.
+
+## Reconstruction and navigation limits
+
+The default C5307 classroom uses only `assets/C5307.MP4`. Its physical dimensions are unknown, so camera positions and route lengths use relative scene units. Walking boundaries are visual estimates. Furniture collision volumes and points of interest are not configured for this scene.
+
+Reconstruction detail depends on capture coverage. Surfaces with limited visibility can appear blurred, incomplete, or duplicated when viewed from new angles.
+
+Collision and routing use explicitly configured obstacle volumes. The viewer does not infer walkable areas from mesh geometry or Gaussian splats. Generated sample assets and the procedural reference room serve as test fixtures. Raw source videos and intermediate reconstruction outputs are excluded from Git.
+
+## Documentation
+
+| Guide | Contents |
+| --- | --- |
+| [Capture procedure](docs/capture-sop.md) | How to record a room for reconstruction |
+| [Reconstruction workflow](docs/reconstruction-workflow.md) | Prepare meshes and splats for the viewer |
+| [C5307 reconstruction](docs/c5307-reconstruction.md) | Rebuild the default classroom on Apple Silicon |
+| [C5304 reconstruction](docs/single-video-reconstruction.md) | Earlier one-video experiment, results, and limitations |
+| [Scene calibration](docs/real-scan-pilot.md) | Configure scale, bounds, obstacles, and points of interest |
+| [Architecture](docs/architecture.md) | Viewer modules and data flow |
+
+## Contributing
+
+Use GitHub issues to report problems or discuss proposed changes. Include reproduction steps for bug reports. For code changes, run `npm test` and `npm run build` before opening a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

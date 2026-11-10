@@ -5,9 +5,7 @@ import * as THREE from 'three';
 import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
 import { FirstPersonController } from '../src/viewer/controls.js';
-import { SCENES as REAL_SCENES } from '../src/config/scenes.js';
-import { FIXTURE_SCENES } from '../src/config/fixtureScenes.js';
-const SCENES = { ...FIXTURE_SCENES, ...REAL_SCENES };
+import { SCENES, DEFAULT_SCENE_ID, getSceneList } from '../src/config/scenes.js';
 import { validateSplatBuffer, validateSceneConfig, loadSpatialScene } from '../src/viewer/sceneLoader.js';
 
 const room = {
@@ -32,11 +30,51 @@ test('standard .splat fixture preserves anisotropic scale, RGBA and quaternion',
 });
 
 test('sample .splat is well formed and accepted by installed parser', () => {
-  const file = readFileSync(new URL('./fixtures/sample-capture.splat', import.meta.url));
+  const file = readFileSync(new URL('../public/scenes/sample-capture.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
   assert.equal(validateSplatBuffer(bytes), 2153);
   assert.equal(SplatParser.parseStandardSplatToUncompressedSplatArray(bytes).splats.length, 2153);
   assert.throws(() => validateSplatBuffer(bytes.slice(0, 31)), /multiple of 32/);
+});
+
+test('metric classroom asset contains valid Gaussian records', () => {
+  const file = readFileSync(new URL('../public/scenes/classroom-metric.splat', import.meta.url));
+  const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  assert.equal(validateSplatBuffer(bytes), 558361);
+});
+
+test('default one-video room has valid splats and explicit relative scale', () => {
+  assert.equal(DEFAULT_SCENE_ID, 'classroom-c5307-single-video');
+  const scene = SCENES[DEFAULT_SCENE_ID];
+  assert.equal(scene.calibration.scaleType, 'relative');
+  assert.equal(scene.roomBoundsKnown, false);
+  assert.match(scene.calibration.captureSource, /C5307\.MP4/);
+  const file = readFileSync(new URL('../public/scenes/classroom-c5307-single-video.splat', import.meta.url));
+  const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  assert.equal(validateSplatBuffer(bytes), 371831);
+  assert.doesNotThrow(() => validateSceneConfig(scene));
+  assert.throws(() => validateSceneConfig({ ...scene, calibration: { ...scene.calibration, scaleType: 'metric' } }), /calibration/);
+});
+
+test('one-video attempts are selectable in order and ship with their own models', () => {
+  const attempts = [
+    ['classroom-c5307-single-video', 371831, 'C5307'],
+    ['classroom-c5307-colmap-clean-20k', 298587, 'C5307'],
+    ['classroom-c5307-vggt-filled-20k', 371294, 'C5307'],
+    ['classroom-c5307-first15-baseline', 324633, 'C5307'],
+    ['classroom-c5306-single-video', 873736, 'C5306'],
+    ['classroom-c5305-one-video', 559056, 'C5305'],
+    ['classroom-single-video', 776728, 'C5304']
+  ];
+  assert.deepEqual(getSceneList().slice(0, attempts.length).map((scene) => scene.id),
+    attempts.map(([id]) => id));
+  for (const [id, count, source] of attempts) {
+    const scene = SCENES[id];
+    assert.match(scene.calibration.captureSource, new RegExp(source));
+    const file = readFileSync(new URL(`../public${scene.assetUrl}`, import.meta.url));
+    const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    assert.equal(validateSplatBuffer(bytes), count, id);
+  }
 });
 
 test('scene ingestion rejects missing or invalid navigation calibration before loading', async () => {
@@ -77,6 +115,21 @@ test('walls stop movement at player radius and furniture cannot be tunneled thro
   const table = collision.resolveMovement(vec(0, 1), vec(0, -1));
   assert.ok(table.position.z >= 0.5 + collision.playerRadius - 1e-4);
   assert.equal(table.collided, true);
+});
+
+test('captured classroom supports a continuous aisle and blocks the raised stage', () => {
+  const collision = new CollisionSystem(SCENES['classroom-pilot']);
+  const spawn = vec(0.65, 5.8);
+  const towardScreen = collision.resolveMovement(spawn, vec(0.65, 2.8));
+  assert.equal(towardScreen.collided, false);
+  const towardRear = collision.resolveMovement(spawn, vec(0.55, 10));
+  assert.equal(towardRear.collided, false);
+  const stage = collision.resolveMovement(towardScreen.position, vec(0.65, 0.2));
+  assert.equal(stage.collided, true);
+  assert.ok(stage.position.z >= 2.25 + collision.playerRadius - 0.02);
+  const table = collision.resolveMovement(vec(0.65, 4.7), vec(-2, 4.7));
+  assert.equal(table.collided, true);
+  assert.ok(table.position.x >= -0.65 + collision.playerRadius - 0.02);
 });
 
 test('diagonal movement slides around corners without entering furniture', () => {
@@ -162,13 +215,4 @@ test('clearing a POI route stops its camera travel', () => {
   controller.cancelTransition();
   controller.update(0.1);
   assert.ok(controller.camera.position.equals(stoppedAt), 'the camera stayed in place after route clear');
-});
-
-test('viewer registry lists only real reconstructions', () => {
-  const scenes = Object.values(REAL_SCENES);
-  assert.ok(scenes.length > 0);
-  for (const scene of scenes) {
-    assert.equal(scene.isReconstructed, true, scene.id);
-    assert.notEqual(scene.mode, 'demo', scene.id);
-  }
 });
