@@ -30,7 +30,7 @@ test('standard .splat fixture preserves anisotropic scale, RGBA and quaternion',
 });
 
 test('sample .splat is well formed and accepted by installed parser', () => {
-  const file = readFileSync(new URL('../public/scenes/sample-capture.splat', import.meta.url));
+  const file = readFileSync(new URL('./fixtures/sample-capture.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
   assert.equal(validateSplatBuffer(bytes), 2153);
   assert.equal(SplatParser.parseStandardSplatToUncompressedSplatArray(bytes).splats.length, 2153);

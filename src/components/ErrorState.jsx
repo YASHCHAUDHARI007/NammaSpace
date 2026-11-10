@@ -54,7 +54,7 @@ export default function ErrorState({
             onClick={onFallbackToDemo}
           >
             <Layers size={15} />
-            <span>Load Baseline Scene</span>
+            <span>Back to Classroom Scan</span>
           </button>
 
           <button
