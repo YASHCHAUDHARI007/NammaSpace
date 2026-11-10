@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 .next
+/out/
+/sites/
 *.local
 
 # Editor directories and files
@@ -23,3 +25,46 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python environment and cache
+.venv/
+.venv-ns/
+.tools/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Reconstruction outputs
+assets/
+outputs/
+logs/
+datasets/
+data/
+!tests/data/
+!tests/data/single-video-C5304/
+*.ply
+*.pcd
+*.obj
+*.mtl
+*.glb
+*.gltf
+*.splat
+!public/scenes/classroom-metric.splat
+!public/scenes/classroom-single-video.splat
+!public/scenes/classroom-c5305-one-video.splat
+!public/scenes/classroom-c5306-single-video.splat
+!public/scenes/classroom-c5307-single-video.splat
+!public/scenes/classroom-c5307-colmap-clean-20k.splat
+!public/scenes/classroom-c5307-vggt-filled-20k.splat
+!public/scenes/classroom-c5307-first15-baseline.splat
+!public/scenes/whatsapp-corridor-20261102.splat
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+
+# Local reconstruction tools and macOS metadata
+.tools/vggt/
+.tools/colmap-libs/
+**/._*
+*.backup
