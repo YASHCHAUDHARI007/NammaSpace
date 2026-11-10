@@ -45,17 +45,19 @@ src/
     controls.js           # First-person WASD + PointerLock + drag fallback controller
     collision.js          # Circle-vs-AABB collision solver & 2D walkable grid A* pathfinder
   config/
-    scenes.js             # Scene registry, spawn poses, roomBounds, colliders, and POIs
+    scenes.js             # Viewer registry: real reconstructions only (spawn, roomBounds, colliders, POIs)
+    fixtureScenes.js      # Synthetic demo/GLB/splat scenes used only by the test suite
   styles/
     global.css            # Design tokens (Warm Ivory, Deep Forest Green, Muted Sage, Charcoal)
     viewer.css            # Translucent glass overlays, typography, responsive & mobile rules
   App.jsx                 # Client-side application state & layout orchestrator
 next.config.mjs           # Next.js and output tracing configuration
 public/
-  models/
-    sample-room-scan.glb  # Generated glTF 2.0 demonstration mesh for pipeline verification
   scenes/
-    sample-capture.splat  # Synthetic 32-byte `.splat` demonstration asset (2,153 splats)
+    nammaspace-classroom.splat # Gaussian-splat scan of the classroom (COLMAP poses + Brush training)
+tests/fixtures/
+  sample-room-scan.glb    # Generated glTF 2.0 test mesh (not shown in the viewer)
+  sample-capture.splat    # Synthetic 32-byte `.splat` test asset (2,153 splats)
 docs/
   capture-sop.md          # Smartphone room capture Standard Operating Procedure
   reconstruction-workflow.md # Guide for Polycam/Luma/Nerfstudio/COLMAP -> Namma Space

@@ -210,7 +210,8 @@ async function loadGlbMeshScene(sceneConfig, onProgress) {
   }
   const rootGroup = new THREE.Group();
   rootGroup.name = `GLBScene_${sceneConfig.id}`;
-  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+  // The placeholder grid floor is only for uncalibrated previews; it would z-fight a real scanned floor.
+  if (!sceneConfig.isReconstructed) rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
 
   rootGroup.add(modelRoot);
 
@@ -306,7 +307,8 @@ async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
   const splatCount = validateSplatBuffer(buffer);
   const rootGroup = new THREE.Group();
   rootGroup.name = `GaussianSplatScene_${sceneConfig.id}`;
-  rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+  // The placeholder grid floor is only for uncalibrated previews; it would z-fight a real scanned floor.
+  if (!sceneConfig.isReconstructed) rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
   const viewer = new GaussianSplats3D.DropInViewer({
     gpuAcceleratedSort: false,
     sharedMemoryForWorkers: false

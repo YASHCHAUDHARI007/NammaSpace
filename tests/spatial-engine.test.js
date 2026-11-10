@@ -5,7 +5,9 @@ import * as THREE from 'three';
 import { SplatParser } from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from '../src/viewer/collision.js';
 import { FirstPersonController } from '../src/viewer/controls.js';
-import { SCENES } from '../src/config/scenes.js';
+import { SCENES as REAL_SCENES } from '../src/config/scenes.js';
+import { FIXTURE_SCENES } from '../src/config/fixtureScenes.js';
+const SCENES = { ...FIXTURE_SCENES, ...REAL_SCENES };
 import { validateSplatBuffer, validateSceneConfig, loadSpatialScene } from '../src/viewer/sceneLoader.js';
 
 const room = {
@@ -30,7 +32,7 @@ test('standard .splat fixture preserves anisotropic scale, RGBA and quaternion',
 });
 
 test('sample .splat is well formed and accepted by installed parser', () => {
-  const file = readFileSync(new URL('../public/scenes/sample-capture.splat', import.meta.url));
+  const file = readFileSync(new URL('./fixtures/sample-capture.splat', import.meta.url));
   const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
   assert.equal(validateSplatBuffer(bytes), 2153);
   assert.equal(SplatParser.parseStandardSplatToUncompressedSplatArray(bytes).splats.length, 2153);
@@ -160,4 +162,13 @@ test('clearing a POI route stops its camera travel', () => {
   controller.cancelTransition();
   controller.update(0.1);
   assert.ok(controller.camera.position.equals(stoppedAt), 'the camera stayed in place after route clear');
+});
+
+test('viewer registry lists only real reconstructions', () => {
+  const scenes = Object.values(REAL_SCENES);
+  assert.ok(scenes.length > 0);
+  for (const scene of scenes) {
+    assert.equal(scene.isReconstructed, true, scene.id);
+    assert.notEqual(scene.mode, 'demo', scene.id);
+  }
 });
