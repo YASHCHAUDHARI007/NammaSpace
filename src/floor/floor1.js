@@ -108,15 +108,16 @@ export const FLOOR_1_ANNOTATIONS = {
   ],
   defaultStartPoiId: 'poi-lobby',
   // 3D scans pinned into rooms. origin = where the scan's (0, 0) sits on the plan; rotationDeg 0
-  // puts the scan's −Z (the stage) to the north. The room is 8.7 m × 14.4 m and the scan
-  // 8.1 m × 13.7 m, so only 0° or 180° fit — flip to 180 if the stage is at the south end.
+  // would put the scan's −Z (the stage) to the north. The room is 8.7 m × 14.4 m and the scan
+  // 8.1 m × 13.7 m, so only 0° or 180° fit. 180°: stage at the south end beside the door (on the
+  // corridor wall), BUILD mural / tiers at the north end.
   scans: [
     {
       sceneId: 'nammaspace-classroom',
       roomNumber: '504',
       label: 'Classroom 504',
       origin: [21.18, 14.82],
-      rotationDeg: 0,
+      rotationDeg: 180,
       // Scan colliders that also block walking on the plan (desk blocks). The stage and tiers are
       // full-width steps people can still stand on, so they stay walkable.
       obstacleIds: ['desks-left', 'desks-right']

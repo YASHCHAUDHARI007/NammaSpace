@@ -51,8 +51,11 @@ test('scan desks block the floor grid; the 3D camera maps to a walkable plan spo
   const nav = getFloor1Navigator();
   const desk = planPositionFromScan('nammaspace-classroom', -1.6, 0);
   assert.equal(nav.isWalkable(desk), false);
+  // 180°: scan +Z (back of the room, BUILD tiers) is north, the stage end is south by the door.
   const spawn = planPositionFromScan('nammaspace-classroom', '0.30', '4.47');
-  assert.ok(close(spawn, [21.48, 19.29], 1e-6));
+  assert.ok(close(spawn, [20.88, 10.35], 1e-6));
+  const stage = planPositionFromScan('nammaspace-classroom', 0, -6.2);
+  assert.ok(stage[1] > 19, 'stage should be at the south end of 504');
   assert.equal(FLOOR_1.regionAt(nav.snapToWalkable(spawn)).id, 'room-504');
   assert.equal(planPositionFromScan('not-a-scene', 0, 0), null);
 });

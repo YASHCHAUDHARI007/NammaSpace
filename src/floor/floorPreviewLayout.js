@@ -9,7 +9,7 @@
  *   world x = plan x (east), world z = plan y (south), y up, floor at 0.
  */
 import { FLOOR_1, FLOOR_1_SCANS } from './floor1.js';
-import { scanBoxToPlanRect } from './scanPlacement.js';
+import { planToScan, scanBoxToPlanRect } from './scanPlacement.js';
 
 export const CEILING_HEIGHT = 2.85;
 export const WALL_THICKNESS = 0.14;
@@ -191,13 +191,25 @@ const toCollider = (c) => ({
   maxZ: c.rect.maxY
 });
 
+const DOOR_CLEAR_WIDTH = 2.0; // metres kept free inside a doorway, measured from the door wall
+
 /**
- * Scan colliders to use inside the floor model. The scan's stepped-seating box spans the full room
- * width, which would seal the doorway on the plan; the floor model keeps the door side open.
+ * Scan colliders to use inside the floor model. The scan's stage and stepped-seating boxes span the
+ * full room width; where one sits in front of the room's door it would seal the doorway, so the
+ * floor model trims it back from the door wall.
  */
-function scanCollidersOnFloor(placement) {
+function scanCollidersOnFloor(placement, door) {
+  const doorScan = door ? planToScan(placement, door.center) : null;
   return (placement.scene.colliders || []).map((c) => {
-    const box = c.id === 'tiered-seating' ? { ...c, minX: Math.max(c.minX, -2.0) } : c;
+    let box = c;
+    if (doorScan) {
+      const halfDoor = door.width / 2 + 0.5;
+      const facesDoor = doorScan[1] + halfDoor > c.minZ && doorScan[1] - halfDoor < c.maxZ;
+      const doorOnWestWall = doorScan[0] < c.minX + 0.6;
+      const doorOnEastWall = doorScan[0] > c.maxX - 0.6;
+      if (facesDoor && doorOnWestWall) box = { ...c, minX: Math.max(c.minX, doorScan[0] + DOOR_CLEAR_WIDTH) };
+      else if (facesDoor && doorOnEastWall) box = { ...c, maxX: Math.min(c.maxX, doorScan[0] - DOOR_CLEAR_WIDTH) };
+    }
     return { id: `scan-${c.id}`, label: c.label, rect: scanBoxToPlanRect(placement, box), minY: c.minY, maxY: c.maxY };
   });
 }
@@ -219,7 +231,7 @@ export function buildFloorPreviewLayout(model = FLOOR_1, scans = FLOOR_1_SCANS) 
     ...walls.map((w) => ({ id: w.id, label: 'Wall', rect: wallRect(w) })),
     ...model.blocks.map((b) => ({ id: b.id, label: b.kind === 'lift' ? 'Lift' : 'Staircase', rect: b.rect })),
     ...classrooms.flatMap((c) => c.colliders),
-    ...scans.flatMap(scanCollidersOnFloor)
+    ...scans.flatMap((s) => scanCollidersOnFloor(s, doorOf(s.roomId)))
   ].map(toCollider);
 
   const corridorRects = model.zones.filter((z) => z.walkable).map((z) => rectOf(z.polygon));
