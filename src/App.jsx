@@ -10,6 +10,7 @@ import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
 import FloorNavigator from './components/FloorNavigator.jsx';
 import SceneInfoCard from './components/SceneInfoCard.jsx';
+import { FLOOR_MODEL_SCENE_ID, getFloor1Navigator, scanPlacementForScene } from './floor/floor1.js';
 import {
   SCENES,
   DEFAULT_SCENE_ID,
@@ -109,6 +110,32 @@ export default function App() {
     setActivePoi(poi);
     viewerRef.current?.focusOnPoi(poi, shouldTransition);
   }, []);
+
+  // From the floor map: open the scan (switching scene if needed) and, when a place was picked,
+  // fly to it once the scene is ready.
+  const pendingScanPoiRef = useRef(null);
+  const handleViewIn3D = useCallback(
+    ({ sceneId, poiId }) => {
+      setShowFloorMap(false);
+      setShowWelcome(false);
+      const scene = allScenesMap[sceneId];
+      if (!scene) return;
+      const poi = poiId ? scene.pois?.find((p) => p.id === poiId) : null;
+      if (sceneId !== activeSceneId) {
+        pendingScanPoiRef.current = poi;
+        handleSelectScene(sceneId);
+      } else if (poi) {
+        handleSelectPoi(poi, true);
+      }
+    },
+    [allScenesMap, activeSceneId, handleSelectScene, handleSelectPoi]
+  );
+  useEffect(() => {
+    if (isLoading || !pendingScanPoiRef.current) return;
+    const poi = pendingScanPoiRef.current;
+    pendingScanPoiRef.current = null;
+    handleSelectPoi(poi, true);
+  }, [isLoading, handleSelectPoi]);
 
   const handleClearPoi = useCallback(() => {
     setActivePoi(null);
@@ -239,6 +266,11 @@ export default function App() {
         scene={activeScene}
         stats={sceneStats}
         cameraCoords={cameraCoords}
+        floorLabel={activeSceneId === FLOOR_MODEL_SCENE_ID ? 'Whole floor' : scanPlacementForScene(activeSceneId)?.label}
+        onShowOnFloor={() => {
+          const placement = scanPlacementForScene(activeSceneId);
+          openFloorMap(placement ? getFloor1Navigator().pois.find((p) => p.id === placement.roomId) : null);
+        }}
         activeRoute={activeRoute}
         onClearRoute={handleClearPoi}
         onImport={() => fileInputRef.current?.click()}
@@ -297,6 +329,9 @@ export default function App() {
         open={showFloorMap}
         initialDestination={floorDestination}
         onClose={() => setShowFloorMap(false)}
+        currentSceneId={activeSceneId}
+        cameraCoords={cameraCoords}
+        onViewIn3D={handleViewIn3D}
       />
 
       {/* Smartphone Capture SOP & Reconstruction Pipeline Drawer */}

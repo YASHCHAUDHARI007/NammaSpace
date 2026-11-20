@@ -10,6 +10,10 @@
 import { FLOOR_1_SKETCH } from './floor1Sketch.js';
 import { buildFloorModel } from './floorPlan.js';
 import { FloorNavigator } from './floorNavigator.js';
+import { buildScanPois, scanBoxToPlanRect, scanToPlan } from './scanPlacement.js';
+import { CLASSROOM_SCENE } from '../config/classroomScene.js';
+
+const SCANNED_SCENES = { [CLASSROOM_SCENE.id]: CLASSROOM_SCENE };
 
 export const FLOOR_1_ANNOTATIONS = {
   name: 'Namma Space — Floor 1',
@@ -51,7 +55,7 @@ export const FLOOR_1_ANNOTATIONS = {
     '401': { aliases: ['four zero one', 'r401'], category: 'Room' },
     '402': { aliases: ['four zero two', 'r402'], category: 'Room' },
     '503': { aliases: ['five zero three', 'r503'], category: 'Room' },
-    '504': { aliases: ['five zero four', 'r504'], category: 'Room' },
+    '504': { name: 'Classroom 504', aliases: ['five zero four', 'r504', 'classroom', 'class room', 'lecture room'], category: 'Classroom' },
     '505': { aliases: ['five zero five', 'r505', 'long hall'], category: 'Room' }
   },
   // Extra destinations. `at` is the routing target (a walkable spot in front of the feature).
@@ -102,11 +106,60 @@ export const FLOOR_1_ANNOTATIONS = {
       at: [15.4, 10.0]
     }
   ],
-  defaultStartPoiId: 'poi-lobby'
+  defaultStartPoiId: 'poi-lobby',
+  // 3D scans pinned into rooms. origin = where the scan's (0, 0) sits on the plan; rotationDeg 0
+  // puts the scan's −Z (the stage) to the north. The room is 8.7 m × 14.4 m and the scan
+  // 8.1 m × 13.7 m, so only 0° or 180° fit — flip to 180 if the stage is at the south end.
+  scans: [
+    {
+      sceneId: 'nammaspace-classroom',
+      roomNumber: '504',
+      label: 'Classroom 504',
+      origin: [21.18, 14.82],
+      rotationDeg: 0,
+      // Scan colliders that also block walking on the plan (desk blocks). The stage and tiers are
+      // full-width steps people can still stand on, so they stay walkable.
+      obstacleIds: ['desks-left', 'desks-right']
+    }
+  ]
 };
 
 export const FLOOR_1 = buildFloorModel(FLOOR_1_SKETCH, FLOOR_1_ANNOTATIONS);
 
+/** Scan placements resolved against the floor model (room id attached). */
+export const FLOOR_1_SCANS = FLOOR_1_ANNOTATIONS.scans
+  .map((placement) => {
+    const room = FLOOR_1.rooms.find((r) => r.number === placement.roomNumber);
+    const scene = SCANNED_SCENES[placement.sceneId];
+    return room && scene ? { ...placement, roomId: room.id, scene } : null;
+  })
+  .filter(Boolean);
+
+export const scanPlacementForScene = (sceneId) => FLOOR_1_SCANS.find((s) => s.sceneId === sceneId) || null;
+export const scanPlacementForRoom = (roomId) => FLOOR_1_SCANS.find((s) => s.roomId === roomId) || null;
+
+/** Scene id of the temporary whole-floor 3D model (its world frame is the plan frame). */
+export const FLOOR_MODEL_SCENE_ID = 'floor-1-model';
+
+/** Plan position of a camera inside a placed scan, or null when the scene is not on this floor. */
+export function planPositionFromScan(sceneId, x, z) {
+  if (sceneId === FLOOR_MODEL_SCENE_ID) return [Number(x), Number(z)];
+  const placement = scanPlacementForScene(sceneId);
+  return placement ? scanToPlan(placement, [Number(x), Number(z)]) : null;
+}
+
+const scanPois = FLOOR_1_SCANS.flatMap((s) => buildScanPois(s, s.scene, s.roomId));
+const scanObstacles = FLOOR_1_SCANS.flatMap((s) =>
+  (s.scene.colliders || [])
+    .filter((c) => s.obstacleIds?.includes(c.id))
+    .map((c) => scanBoxToPlanRect(s, c))
+);
+
 let floor1Navigator = null;
 /** Shared navigator (grid + search index) built on first use and reused by every UI surface. */
-export const getFloor1Navigator = () => (floor1Navigator ??= new FloorNavigator(FLOOR_1, FLOOR_1_ANNOTATIONS));
+export const getFloor1Navigator = () =>
+  (floor1Navigator ??= new FloorNavigator(
+    FLOOR_1,
+    { ...FLOOR_1_ANNOTATIONS, pois: [...FLOOR_1_ANNOTATIONS.pois, ...scanPois] },
+    { obstacles: scanObstacles }
+  ));

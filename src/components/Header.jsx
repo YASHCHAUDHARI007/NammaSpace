@@ -34,13 +34,16 @@ export default function Header({
     () => searchPois(scenePois, query).map((r) => ({ type: 'scene', poi: r.poi })),
     [scenePois, query]
   );
+  const scenePoiIds = useMemo(() => new Set(scenePois.map((p) => p.id)), [scenePois]);
   const floorResults = useMemo(() => {
     if (!isOpen || !query.trim()) return [];
     return getFloor1Navigator()
       .search(query)
+      // Places of the open scan are already listed under "In this scan".
+      .filter((r) => r.poi.scan?.sceneId !== activeScene?.id && !scenePoiIds.has(r.poi.id))
       .slice(0, MAX_FLOOR_RESULTS)
       .map((r) => ({ type: 'floor', poi: r.poi, distance: r.distance }));
-  }, [isOpen, query]);
+  }, [isOpen, query, activeScene?.id, scenePoiIds]);
   const results = [...sceneResults, ...floorResults];
 
   useEffect(() => setActiveIndex(0), [query]);

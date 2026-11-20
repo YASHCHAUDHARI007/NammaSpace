@@ -300,6 +300,7 @@ const SceneViewer = forwardRef(function SceneViewer(
         // Mount new scene root
         stage.scene.add(result.rootGroup);
         currentSceneGroupRef.current = result.rootGroup;
+        if (stage.scene.fog?.isFogExp2) stage.scene.fog.density = result.rootGroup.userData.fogDensity ?? 0.032;
         loadedSceneIdRef.current = sceneConfig.id;
 
         // Configure collision bounds + any dynamically extracted mesh AABBs
@@ -393,7 +394,7 @@ const SceneViewer = forwardRef(function SceneViewer(
 
     const pois = sceneConfig?.pois || [];
     if (pois.length > 0) {
-      const { group, interactables } = createPOIMarkers(pois, activePoi?.id || null);
+      const { group, interactables } = createPOIMarkers(pois, activePoi?.id || null, { occluded: sceneConfig?.mode === 'floor' });
       stage.scene.add(group);
       poiGroupRef.current = group;
       poiInteractablesRef.current = interactables;

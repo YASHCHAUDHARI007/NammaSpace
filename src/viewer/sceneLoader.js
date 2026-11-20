@@ -4,6 +4,8 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
 import { CollisionSystem } from './collision.js';
 import { DEFAULT_STANDING_HEIGHT, PLAYER_RADIUS } from '../config/scenes.js';
+import { CLASSROOM_SCENE } from '../config/classroomScene.js';
+import { buildFloorPreview } from './buildFloorPreview.js';
 import {
   buildProceduralDemoRoom,
   buildReconstructionCalibrationStage,
@@ -30,11 +32,11 @@ dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5
 gltfLoader.setDRACOLoader(dracoLoader);
 
 export function validateSceneConfig(scene) {
-  if (!scene || !['demo', 'glb', 'splat'].includes(scene.mode)) {
-    throw new Error('Invalid scene configuration: mode must be demo, glb, or splat.');
+  if (!scene || !['demo', 'glb', 'splat', 'floor'].includes(scene.mode)) {
+    throw new Error('Invalid scene configuration: mode must be demo, glb, splat, or floor.');
   }
-  if (scene.mode === 'demo' && scene.isReconstructed) {
-    throw new Error('Procedural demo geometry cannot be declared a real reconstruction.');
+  if ((scene.mode === 'demo' || scene.mode === 'floor') && scene.isReconstructed) {
+    throw new Error('Procedural geometry cannot be declared a real reconstruction.');
   }
   const b = scene.roomBounds;
   if (!b || !['minX', 'maxX', 'minZ', 'maxZ', 'floorY', 'ceilingY'].every((key) => Number.isFinite(b[key])) ||
@@ -97,6 +99,9 @@ export async function loadSpatialScene(sceneConfig, callbacks = {}) {
     case 'glb':
       return loadGlbMeshScene(sceneConfig, onProgress);
 
+    case 'floor':
+      return loadFloorPreviewScene(sceneConfig, onProgress, callbacks.signal, callbacks.renderer);
+
     case 'splat':
       // Spark 2 (level-of-detail splat renderer) is the default whenever the caller hands us the
       // WebGL renderer; `renderer: 'gs3d'` keeps the previous GaussianSplats3D path as a fallback.
@@ -141,6 +146,75 @@ async function loadProceduralDemoScene(sceneConfig) {
       splatCount: null,
       collisionCount: sceneConfig.colliders?.length || 0,
       provenanceNote: 'Procedural Three.js baseline geometry (not AI-reconstructed)'
+    }
+  };
+}
+
+// Real scans that the floor model can embed in their rooms.
+const EMBEDDABLE_SCANS = { [CLASSROOM_SCENE.id]: CLASSROOM_SCENE };
+
+/**
+ * Mode 4: Temporary whole-floor model generated from the floor plan, with real room scans
+ * embedded where they exist. If a scan fails to load the room falls back to its plain shell.
+ */
+async function loadFloorPreviewScene(sceneConfig, onProgress, signal, renderer) {
+  const layout = sceneConfig.layout;
+  if (!layout) throw new Error('Floor model scene is missing its generated layout.');
+  const embedded = [];
+  if (renderer) {
+    for (const scan of layout.embeddedScans || []) {
+      const scanScene = EMBEDDABLE_SCANS[scan.sceneId];
+      if (!scanScene) continue;
+      try {
+        const result = await loadSparkSplatScene(scanScene, onProgress, signal, renderer);
+        // Move only the splat mesh into place; the SparkRenderer stays at the world origin.
+        result.rootGroup.traverse((child) => {
+          if (child.name?.startsWith('SplatMesh_')) {
+            child.position.set(scan.origin[0], 0, scan.origin[1]);
+            child.rotation.y = (-(scan.rotationDeg || 0) * Math.PI) / 180;
+          }
+        });
+        embedded.push({ roomId: scan.roomId, result });
+      } catch (error) {
+        if (signal?.aborted || error?.name === 'AbortError') throw error;
+        console.warn(`Floor model: could not embed scan "${scan.sceneId}"`, error);
+      }
+    }
+  }
+  if (signal?.aborted) {
+    for (const e of embedded) await disposeSpatialScene(e.result.rootGroup);
+    throw new DOMException('Scene load cancelled', 'AbortError');
+  }
+
+  const rootGroup = buildFloorPreview(layout, { loadedScanRoomIds: new Set(embedded.map((e) => e.roomId)) });
+  rootGroup.name = `FloorPreview_${sceneConfig.id}`;
+  for (const e of embedded) rootGroup.add(e.result.rootGroup);
+  const ready = embedded.map((e) => e.result.rootGroup.userData.firstFrameReady).filter(Boolean);
+  if (ready.length) rootGroup.userData.firstFrameReady = Promise.all(ready);
+  // Indoor floor spans ~60 m: thin the stage fog so the far end of the corridor stays visible.
+  rootGroup.userData.fogDensity = 0.012;
+
+  let triangleCount = 0;
+  rootGroup.traverse((obj) => {
+    if (!obj.isMesh || !obj.geometry?.attributes?.position) return;
+    const tris = obj.geometry.index ? obj.geometry.index.count / 3 : obj.geometry.attributes.position.count / 3;
+    triangleCount += tris * (obj.isInstancedMesh ? obj.count : 1);
+  });
+  const splatCount = embedded.reduce((n, e) => n + (e.result.stats.splatCount || 0), 0) || null;
+
+  return {
+    rootGroup,
+    extractedColliders: [],
+    stats: {
+      mode: 'floor',
+      isReconstructed: false,
+      vertexCount: null,
+      triangleCount: Math.round(triangleCount),
+      splatCount,
+      collisionCount: sceneConfig.colliders?.length || 0,
+      provenanceNote: embedded.length
+        ? `Floor-plan model with ${embedded.length} real scan${embedded.length > 1 ? 's' : ''} embedded (Spark 2)`
+        : 'Floor-plan model (procedural; no scans embedded)'
     }
   };
 }

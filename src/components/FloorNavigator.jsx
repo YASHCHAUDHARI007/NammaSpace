@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ArrowUp,
   CornerUpLeft,
+  Box,
   Crosshair,
   Flag,
   LocateFixed,
@@ -12,7 +13,15 @@ import {
   Search,
   X
 } from 'lucide-react';
-import { FLOOR_1, getFloor1Navigator } from '../floor/floor1.js';
+import {
+  FLOOR_1,
+  FLOOR_1_SCANS,
+  FLOOR_MODEL_SCENE_ID,
+  getFloor1Navigator,
+  planPositionFromScan,
+  scanPlacementForRoom,
+  scanPlacementForScene
+} from '../floor/floor1.js';
 
 const formatEta = (s) => (s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`);
 
@@ -77,6 +86,8 @@ function FloorMapSvg({ navigator, view, start, route, destination, hoverStep, on
   };
 
   const features = navigator.pois.filter((p) => p.kind === 'feature' && p.category === 'Vertical Access');
+  const scanPois = navigator.pois.filter((p) => p.kind === 'scan');
+  const scannedRoomIds = new Set(FLOOR_1_SCANS.map((s) => s.roomId));
   const restricted = model.zones.filter((z) => !z.walkable);
 
   return (
@@ -110,8 +121,18 @@ function FloorMapSvg({ navigator, view, start, route, destination, hoverStep, on
             <text x={r.x + r.w / 2} y={r.y + r.h / 2 + (isDest ? 1.4 : 0)} className="fm-room-label" textAnchor="middle" dominantBaseline="middle">
               {room.number}
             </text>
+            {scannedRoomIds.has(room.id) && (
+              <g className="fm-scan-badge" transform={`translate(${r.x + 0.5} ${r.y + 0.5})`}>
+                <rect width="2.6" height="1.3" rx="0.35" />
+                <text x="1.3" y="0.68" textAnchor="middle" dominantBaseline="central">3D</text>
+              </g>
+            )}
           </g>
         );
+      })}
+      {scanPois.map((p) => {
+        const [x, y] = tv(p.position);
+        return <circle key={p.id} cx={x} cy={y} r={0.38} className={`fm-scan-poi ${destination?.id === p.id ? 'is-dest' : ''}`} />;
       })}
       {model.blocks.map((blk) => {
         const r = rect(blk.rect);
@@ -176,7 +197,31 @@ function FloorMapSvg({ navigator, view, start, route, destination, hoverStep, on
   );
 }
 
-export default function FloorNavigator({ open, onClose, initialDestination = null }) {
+// Places the temporary floor model can jump to (rooms, lift, stairs, corridor).
+const FLOOR_MODEL_POI_IDS = new Set(['poi-lift', 'poi-stairs-north', 'poi-stairs-south', 'poi-corridor']);
+
+/**
+ * Where to show a destination in 3D: the real scan when one exists (a place marked in the scan, or
+ * a scanned room), otherwise the temporary floor model. `real` says which one it is.
+ */
+const scanFor = (poi) => {
+  if (!poi) return null;
+  if (poi.scan) return { ...poi.scan, real: true };
+  const placement = poi.kind === 'room' ? scanPlacementForRoom(poi.roomId) : null;
+  if (placement) return { sceneId: placement.sceneId, poiId: null, real: true };
+  if (poi.roomId) return { sceneId: FLOOR_MODEL_SCENE_ID, poiId: poi.roomId, real: false };
+  if (FLOOR_MODEL_POI_IDS.has(poi.id)) return { sceneId: FLOOR_MODEL_SCENE_ID, poiId: poi.id, real: false };
+  return null;
+};
+
+export default function FloorNavigator({
+  open,
+  onClose,
+  initialDestination = null,
+  currentSceneId = null,
+  cameraCoords = null,
+  onViewIn3D
+}) {
   const navigator = useMemo(() => (open ? getFloor1Navigator() : null), [open]);
   const [query, setQuery] = useState('');
   const [start, setStart] = useState(null);
@@ -190,9 +235,24 @@ export default function FloorNavigator({ open, onClose, initialDestination = nul
   const mapWrapRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Each time the map opens: start from where you stand in the 3D scan when that scan is placed
+  // on this floor, otherwise keep the last start (or the lobby).
+  const cameraRef = useRef(cameraCoords);
+  cameraRef.current = cameraCoords;
   useEffect(() => {
-    if (navigator && !start) setStart(navigator.defaultStart);
-  }, [navigator, start]);
+    if (!navigator) return;
+    const cam = cameraRef.current;
+    const placement = scanPlacementForScene(currentSceneId);
+    const fromScan = cam ? planPositionFromScan(currentSceneId, cam.x, cam.z) : null;
+    const snapped = fromScan && navigator.snapToWalkable(fromScan);
+    if (snapped) {
+      setStart(snapped);
+      const where = placement?.label || navigator.model.regionAt(snapped)?.name || 'Floor 1';
+      setStartLabel(`You · ${where} (3D ${placement ? 'scan' : 'model'})`);
+    } else {
+      setStart((s) => s || navigator.defaultStart);
+    }
+  }, [navigator, currentSceneId]);
 
   // Opened from the header search with a place already chosen.
   useEffect(() => {
@@ -344,7 +404,10 @@ export default function FloorNavigator({ open, onClose, initialDestination = nul
                   onClick={() => chooseDestination(poi)}
                 >
                   <div className="poi-item-main">
-                    <span className="poi-item-title">{poi.name}</span>
+                    <span className="poi-item-title">
+                      {poi.name}
+                      {scanFor(poi)?.real && <span className="poi-3d-tag">3D scan</span>}
+                    </span>
                     <span className="poi-item-meta">{poi.category}</span>
                   </div>
                   <span className="poi-route-tag">{distance < 1 ? 'here' : `${Math.round(distance)} m`}</span>
@@ -368,6 +431,18 @@ export default function FloorNavigator({ open, onClose, initialDestination = nul
                   <X size={12} />
                 </button>
               </div>
+              {scanFor(route.poi) && onViewIn3D && (
+                <button type="button" className="floor-nav-3d-btn" onClick={() => onViewIn3D(scanFor(route.poi))}>
+                  <Box size={14} />
+                  <span>
+                    {!scanFor(route.poi).real
+                      ? 'Open in the 3D floor model'
+                      : route.poi.scan
+                        ? 'Show this spot in the 3D scan'
+                        : 'Walk through the real 3D scan'}
+                  </span>
+                </button>
+              )}
               <ol className="floor-nav-steps">
                 {route.steps.map((step, i) => {
                   const Icon = stepIcon(step);

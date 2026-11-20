@@ -74,7 +74,7 @@ export function describeRoute(model, points, destinationName) {
     const angle = (Math.acos(Math.max(-1, Math.min(1, p.dx * s.dx + p.dy * s.dy))) * 180) / Math.PI;
     const regionChanged = s.region && s.region.id !== p.region?.id;
     // Straight on, or a sub-metre jog (e.g. lining up with a doorway): fold into the current step.
-    if ((angle < 20 || (s.len < 1 && i < segs.length - 1)) && !regionChanged) {
+    if ((angle < 20 || (s.len < 1 && i < segs.length - 1) || s.len < 0.3) && !regionChanged) {
       steps[steps.length - 1].distance += s.len; // keep walking straight
       continue;
     }

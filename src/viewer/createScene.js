@@ -472,7 +472,11 @@ function createLabelTexture(text, isSelected) {
  * Point-of-interest labels: constant-size, always-on-top pills that point at the anchor. Each label
  * sprite is raycastable, so hovering/clicking it selects the POI.
  */
-export function createPOIMarkers(pois = [], activePoiId = null) {
+/**
+ * @param {boolean} occluded  hide labels behind walls (multi-room scenes); single-room scans keep
+ *        them always visible.
+ */
+export function createPOIMarkers(pois = [], activePoiId = null, { occluded = false } = {}) {
   const group = new THREE.Group();
   group.name = 'POIMarkersGroup';
   const interactables = [];
@@ -483,7 +487,7 @@ export function createPOIMarkers(pois = [], activePoiId = null) {
     const material = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
-      depthTest: false,
+      depthTest: occluded && !isSelected,
       depthWrite: false,
       sizeAttenuation: false,
       toneMapped: false

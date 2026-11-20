@@ -53,7 +53,7 @@ test('scene ingestion rejects missing or invalid navigation calibration before l
   assert.throws(() => validateSceneConfig(unverifiedReal), /calibration/);
   const declaredCalibration = { ...unverifiedReal, calibration: { captureSource: 'unit-test fixture', upAxis: 'Y', metersPerAssetUnit: 1, originDescription: 'unit-test origin', referenceDistanceMeters: 1, referenceDistanceAssetUnits: 1 } };
   assert.doesNotThrow(() => validateSceneConfig(declaredCalibration));
-  assert.throws(() => validateSceneConfig({ ...SCENES['demo-studio'], isReconstructed: true }), /Procedural demo/);
+  assert.throws(() => validateSceneConfig({ ...SCENES['demo-studio'], isReconstructed: true }), /Procedural geometry/);
   const unreachablePoi = { ...SCENES['reconstructed-glb'], pois: [{ ...SCENES['reconstructed-glb'].pois[0], waypoint: [0, 0] }] };
   assert.throws(() => validateSceneConfig(unreachablePoi), /Invalid POI/);
 });
@@ -164,11 +164,16 @@ test('clearing a POI route stops its camera travel', () => {
   assert.ok(controller.camera.position.equals(stoppedAt), 'the camera stayed in place after route clear');
 });
 
-test('viewer registry lists only real reconstructions', () => {
+test('viewer registry lists real reconstructions plus clearly labelled floor previews only', () => {
   const scenes = Object.values(REAL_SCENES);
-  assert.ok(scenes.length > 0);
+  assert.ok(scenes.some((scene) => scene.isReconstructed));
   for (const scene of scenes) {
-    assert.equal(scene.isReconstructed, true, scene.id);
     assert.notEqual(scene.mode, 'demo', scene.id);
+    if (!scene.isReconstructed) {
+      // Temporary models must say so: preview flag, procedural floor mode, and provenance text.
+      assert.equal(scene.isPreview, true, scene.id);
+      assert.equal(scene.mode, 'floor', scene.id);
+      assert.match(scene.reconstructionStatus, /Temporary model/, scene.id);
+    }
   }
 });
