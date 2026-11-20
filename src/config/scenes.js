@@ -22,11 +22,13 @@ export const SCENES = {
     name: 'NammaSpace Classroom — Gaussian Splat Scan',
     shortLabel: 'Classroom Scan (.splat)',
     mode: 'splat',
-    sceneType: '3D Gaussian Splatting (.splat)',
+    sceneType: '3D Gaussian Splatting (.ksplat)',
     reconstructionStatus:
-      'Reconstructed from on-site footage: COLMAP 4.2 poses (597/599 frames, 0.62 px reprojection) + Brush 0.3 splat training',
+      'Reconstructed from on-site footage: COLMAP 4.2 poses (1,038 frames, 0.73 px reprojection) + gsplat MCMC training (40k steps, 2400 px, depth-regularised, anti-aliased, bilateral-grid exposure correction)',
     isReconstructed: true,
-    assetUrl: '/scenes/nammaspace-classroom.splat',
+    assetUrl: '/scenes/nammaspace-classroom.ksplat',
+    // View-dependent colour (spherical harmonics) for realistic sheen on walls, screen and floor.
+    sphericalHarmonicsDegree: 1,
     dimensionsLabel: '8.2m × 13.7m × 2.85m',
     description:
       'Tiered classroom with a raised stage and projector screen at the front, two desk blocks split by a centre aisle, and the BUILD mural above the stepped seating at the back. Captured with 9 handheld 4K clips and 46 stills.',

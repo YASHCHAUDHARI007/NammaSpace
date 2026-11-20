@@ -20,7 +20,8 @@ export function createThreeStage(container) {
   const camera = new THREE.PerspectiveCamera(68, width / height, 0.1, 80);
 
   const renderer = new THREE.WebGLRenderer({
-    antialias: true,
+    // MSAA does not improve Gaussian splats and costs a lot of fill rate on phones (Spark guidance).
+    antialias: false,
     powerPreference: 'high-performance'
   });
   // Sensible pixel-ratio limit for crisp visuals without GPU overdraw on 3x/4x screens

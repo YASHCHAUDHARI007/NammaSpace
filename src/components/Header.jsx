@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   BookOpen,
   Navigation,
+  Map,
   X
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export default function Header({
   isFullscreen,
   onToggleFullscreen,
   onOpenGuide,
+  onOpenFloorMap,
   activePoi,
   onSelectPoi,
   onClearPoi
@@ -190,6 +192,16 @@ export default function Header({
 
       {/* Right Cluster: Utility & Diagnostics Controls */}
       <div className="header-cluster header-actions">
+        <button
+          type="button"
+          className="icon-btn icon-btn-accent"
+          onClick={onOpenFloorMap}
+          title="Floor map: search any room and get a walking route"
+        >
+          <Map size={15} />
+          <span>Floor Map</span>
+        </button>
+
         <button
           type="button"
           className={`icon-btn ${showCollisionBounds ? 'is-active' : ''}`}

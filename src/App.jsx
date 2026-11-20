@@ -16,6 +16,7 @@ import WelcomeOverlay from './components/WelcomeOverlay.jsx';
 import ViewerControls from './components/ViewerControls.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
+import FloorNavigator from './components/FloorNavigator.jsx';
 import {
   SCENES,
   DEFAULT_SCENE_ID,
@@ -35,6 +36,7 @@ export default function App() {
   const [sceneReloadToken, setSceneReloadToken] = useState(0);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showGuideDrawer, setShowGuideDrawer] = useState(false);
+  const [showFloorMap, setShowFloorMap] = useState(false);
 
   // Loading & Error lifecycle state
   const [isLoading, setIsLoading] = useState(true);
@@ -186,6 +188,11 @@ export default function App() {
           viewerRef.current?.unlockPointer();
           setShowGuideDrawer(true);
         }}
+        onOpenFloorMap={() => {
+          viewerRef.current?.unlockPointer();
+          setShowWelcome(false);
+          setShowFloorMap(true);
+        }}
         activePoi={activePoi}
         onSelectPoi={handleSelectPoi}
         onClearPoi={handleClearPoi}
@@ -331,7 +338,10 @@ export default function App() {
         <WelcomeOverlay
           sceneConfig={activeScene}
           onStartExplore={handleStartExplore}
-          onTriggerFileUpload={() => fileInputRef.current?.click()}
+          onOpenFloorMap={() => {
+            setShowWelcome(false);
+            setShowFloorMap(true);
+          }}
         />
       )}
 
@@ -357,6 +367,8 @@ export default function App() {
           }}
         />
       )}
+
+      <FloorNavigator open={showFloorMap} onClose={() => setShowFloorMap(false)} />
 
       {/* Smartphone Capture SOP & Reconstruction Pipeline Drawer */}
       {showGuideDrawer && (

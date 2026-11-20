@@ -286,6 +286,7 @@ const SceneViewer = forwardRef(function SceneViewer(
       try {
         const result = await loadSpatialScene(sceneConfig, {
           signal: abortController.signal,
+          renderer: stage.renderer,
           onProgress: (prog) => {
             if (!cancelled) callbacksRef.current.onLoadProgress?.(prog);
           }

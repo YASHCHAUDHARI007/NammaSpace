@@ -98,6 +98,11 @@ export async function loadSpatialScene(sceneConfig, callbacks = {}) {
       return loadGlbMeshScene(sceneConfig, onProgress);
 
     case 'splat':
+      // Spark 2 (level-of-detail splat renderer) is the default whenever the caller hands us the
+      // WebGL renderer; `renderer: 'gs3d'` keeps the previous GaussianSplats3D path as a fallback.
+      if (callbacks.renderer && sceneConfig.renderer !== 'gs3d') {
+        return loadSparkSplatScene(sceneConfig, onProgress, callbacks.signal, callbacks.renderer);
+      }
       return loadGaussianSplatScene(sceneConfig, onProgress, callbacks.signal);
 
     default:
@@ -304,20 +309,28 @@ async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
   }
   const buffer = await fetchSplatBuffer(sceneConfig.assetUrl, onProgress, signal);
   if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
-  const splatCount = validateSplatBuffer(buffer);
+  // .ksplat (the library's compressed format) can carry spherical harmonics, i.e. view-dependent
+  // colour; plain .splat stores base colour only.
+  const isKSplat = sceneConfig.splatFormat === 'ksplat' || /\.ksplat(?:$|[?#])/i.test(sceneConfig.assetUrl);
+  const splatCount = isKSplat ? null : validateSplatBuffer(buffer);
+  const shDegree = isKSplat ? Math.max(0, Math.min(2, sceneConfig.sphericalHarmonicsDegree ?? 0)) : 0;
   const rootGroup = new THREE.Group();
   rootGroup.name = `GaussianSplatScene_${sceneConfig.id}`;
   // The placeholder grid floor is only for uncalibrated previews; it would z-fight a real scanned floor.
   if (!sceneConfig.isReconstructed) rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
   const viewer = new GaussianSplats3D.DropInViewer({
     gpuAcceleratedSort: false,
-    sharedMemoryForWorkers: false
+    sharedMemoryForWorkers: false,
+    sphericalHarmonicsDegree: shDegree,
+    // The default reveal grows a visible sphere per rendered frame; on slower GPUs the far
+    // end of a room stays black for many seconds. Show the whole capture at once.
+    sceneRevealMode: GaussianSplats3D.SceneRevealMode.Instant
   });
   let blobUrl;
   try {
     blobUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
     const load = viewer.addSplatScene(blobUrl, {
-      format: GaussianSplats3D.SceneFormat.Splat,
+      format: isKSplat ? GaussianSplats3D.SceneFormat.KSplat : GaussianSplats3D.SceneFormat.Splat,
       showLoadingUI: false,
       progressiveLoad: false,
       splatAlphaRemovalThreshold: 1
@@ -341,7 +354,9 @@ async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
         triangleCount: null,
         splatCount: viewer.splatMesh?.getSplatCount() ?? splatCount,
         collisionCount: sceneConfig.colliders?.length || 0,
-        provenanceNote: `Loaded standard 32-byte .splat asset with explicit proxy collision bounds`
+        provenanceNote: isKSplat
+          ? `Loaded .ksplat asset (spherical harmonics degree ${shDegree}) with explicit proxy collision bounds`
+          : `Loaded standard 32-byte .splat asset with explicit proxy collision bounds`
       }
     };
   } catch (error) {
@@ -351,6 +366,82 @@ async function loadGaussianSplatScene(sceneConfig, onProgress, signal) {
     throw new Error(`Could not render .splat asset "${sceneConfig.assetUrl}": ${error.message}`);
   } finally {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
+}
+
+const SPARK_FILE_TYPES = { ksplat: 'ksplat', splat: 'splat', ply: 'ply', spz: 'spz', sog: 'pcsogszip', rad: 'rad' };
+
+function splatFileType(sceneConfig) {
+  if (sceneConfig.splatFormat) return SPARK_FILE_TYPES[sceneConfig.splatFormat] || sceneConfig.splatFormat;
+  const ext = /\.([a-z0-9]+)(?:$|[?#])/i.exec(sceneConfig.assetUrl)?.[1]?.toLowerCase();
+  return SPARK_FILE_TYPES[ext] || 'splat';
+}
+
+/**
+ * Mode 3 (default): Spark 2 renderer.
+ * - `.rad` assets are pre-built LoD trees streamed page by page with HTTP range requests, so the
+ *   coarse room appears after the first pages and detail fills in while the user looks around.
+ * - Other formats (.ksplat/.splat/.ply/.spz) are downloaded once and given a LoD tree in a worker.
+ * Either way Spark draws a fixed per-device splat budget each frame (≈2.5M desktop, 1–1.5M mobile),
+ * which keeps frame rates smooth on phones regardless of how large the capture is.
+ */
+async function loadSparkSplatScene(sceneConfig, onProgress, signal, renderer) {
+  if (!sceneConfig.assetUrl) {
+    throw new Error('Splat scene configuration is missing assetUrl. Add a splat asset to public/scenes/.');
+  }
+  const { SparkRenderer, SplatMesh } = await import('@sparkjsdev/spark');
+  if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+
+  const fileType = splatFileType(sceneConfig);
+  const streamed = fileType === 'rad';
+  const rootGroup = new THREE.Group();
+  rootGroup.name = `SparkSplatScene_${sceneConfig.id}`;
+  if (!sceneConfig.isReconstructed) rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
+
+  const spark = new SparkRenderer({
+    renderer,
+    // Skip splats smaller than ~1.5 px on screen: visually identical, noticeably cheaper on phones.
+    lodRenderScale: sceneConfig.lodRenderScale ?? 1.5
+  });
+  spark.name = 'SparkRenderer';
+  rootGroup.add(spark);
+
+  let mesh;
+  try {
+    if (streamed) {
+      mesh = new SplatMesh({ url: sceneConfig.assetUrl, paged: true });
+    } else {
+      const buffer = await fetchSplatBuffer(sceneConfig.assetUrl, onProgress, signal);
+      if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+      if (fileType === 'splat') validateSplatBuffer(buffer);
+      mesh = new SplatMesh({ fileBytes: new Uint8Array(buffer), fileType, lod: true });
+    }
+    mesh.name = `SplatMesh_${sceneConfig.id}`;
+    await mesh.initialized;
+    if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
+    rootGroup.add(mesh);
+    // Spark replaces the source splats with a LoD tree (original leaves + merged parent splats);
+    // each frame draws a per-device subset of it.
+    const lodCount = mesh.packedSplats?.lodSplats?.numSplats || mesh.extSplats?.lodSplats?.numSplats || 0;
+    const sourceCount = mesh.packedSplats?.numSplats || mesh.splats?.getNumSplats?.() || 0;
+    const splatCount = sourceCount || lodCount || null;
+    return {
+      rootGroup,
+      stats: {
+        mode: 'splat',
+        triangleCount: null,
+        splatCount,
+        collisionCount: sceneConfig.colliders?.length || 0,
+        provenanceNote: streamed
+          ? 'Streaming .rad level-of-detail splats with Spark 2 (HTTP range pages) and explicit proxy collision bounds'
+          : `Loaded .${fileType} with Spark 2 (level-of-detail tree of ${lodCount.toLocaleString()} splats built in a worker) and explicit proxy collision bounds`
+      }
+    };
+  } catch (error) {
+    mesh?.dispose();
+    spark.dispose();
+    if (signal?.aborted || error?.name === 'AbortError') throw new DOMException('Scene load cancelled', 'AbortError');
+    throw new Error(`Could not render splat asset "${sceneConfig.assetUrl}" with Spark: ${error.message}`);
   }
 }
 
@@ -365,6 +456,19 @@ export async function disposeSpatialScene(rootGroup) {
     viewer.removeFromParent();
     await viewer.dispose().catch(() => {});
     disposeObject3D(viewer.callbackMesh);
+  }
+  // Spark objects own GPU textures and worker state; release them before the generic traversal.
+  const sparkObjects = [];
+  rootGroup.traverse((child) => {
+    if (child.name === 'SparkRenderer' || child.name?.startsWith('SplatMesh_')) sparkObjects.push(child);
+  });
+  for (const obj of sparkObjects) {
+    obj.removeFromParent();
+    try {
+      obj.dispose?.();
+    } catch {
+      // Already released (e.g. load was cancelled mid-way).
+    }
   }
   disposeObject3D(rootGroup);
 }

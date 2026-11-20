@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Upload, Sparkles, ShieldAlert } from 'lucide-react';
+import { Compass, Map, Sparkles, ShieldAlert } from 'lucide-react';
 
 /**
  * NAMMA SPACE — Welcome Overlay ("Step inside.")
@@ -7,7 +7,7 @@ import { Compass, Upload, Sparkles, ShieldAlert } from 'lucide-react';
 export default function WelcomeOverlay({
   sceneConfig,
   onStartExplore,
-  onTriggerFileUpload
+  onOpenFloorMap
 }) {
   if (!sceneConfig) return null;
 
@@ -83,11 +83,11 @@ export default function WelcomeOverlay({
             <button
               type="button"
               className="btn-secondary-light"
-              onClick={onTriggerFileUpload}
-              title="Load a custom .glb or .splat reconstruction file from your device"
+              onClick={onOpenFloorMap}
+              title="Search any room on the floor and get a walking route"
             >
-              <Upload size={16} />
-              <span>Import .glb / .splat</span>
+              <Map size={16} />
+              <span>Floor map &amp; routes</span>
             </button>
           </div>
         </div>
