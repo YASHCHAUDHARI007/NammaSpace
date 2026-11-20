@@ -415,8 +415,62 @@ export function buildReconstructionCalibrationStage(roomBounds) {
   return group;
 }
 
+const LABEL_PX_RATIO = 2; // draw labels at 2x for crisp text on high-DPI screens
+const LABEL_SCREEN_HEIGHT = 0.042; // constant on-screen size (fraction of the clip-space height)
+
+/** Canvas-drawn label pill with a pointer tail, e.g. "● Stage & Projector Screen". */
+function createLabelTexture(text, isSelected) {
+  const r = LABEL_PX_RATIO;
+  const font = `600 ${13 * r}px "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif`;
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = font;
+  const padX = 11 * r;
+  const dot = 7 * r;
+  const gap = 7 * r;
+  const pillH = 28 * r;
+  const tail = 7 * r;
+  const width = Math.ceil(padX * 2 + dot + gap + measure.measureText(text).width);
+  const height = pillH + tail;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const accent = isSelected ? '#d99b4e' : '#48b878';
+
+  ctx.fillStyle = isSelected ? 'rgba(42, 30, 16, 0.92)' : 'rgba(15, 24, 19, 0.88)';
+  ctx.strokeStyle = isSelected ? 'rgba(217, 155, 78, 0.9)' : 'rgba(246, 244, 239, 0.28)';
+  ctx.lineWidth = 1.5 * r;
+  ctx.beginPath();
+  ctx.roundRect(ctx.lineWidth, ctx.lineWidth, width - ctx.lineWidth * 2, pillH - ctx.lineWidth * 2, pillH / 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(width / 2 - tail, pillH - ctx.lineWidth);
+  ctx.lineTo(width / 2, height);
+  ctx.lineTo(width / 2 + tail, pillH - ctx.lineWidth);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.arc(padX + dot / 2, pillH / 2, dot / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.font = font;
+  ctx.fillStyle = '#f6f4ef';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, padX + dot + gap, pillH / 2 + r);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return { texture, aspect: width / height };
+}
+
 /**
- * Creates interactive 3D Point-of-Interest (POI) beacons that can be hovered/clicked in 3D space.
+ * Point-of-interest labels: constant-size, always-on-top pills that point at the anchor. Each label
+ * sprite is raycastable, so hovering/clicking it selects the POI.
  */
 export function createPOIMarkers(pois = [], activePoiId = null) {
   const group = new THREE.Group();
@@ -425,50 +479,23 @@ export function createPOIMarkers(pois = [], activePoiId = null) {
 
   for (const poi of pois) {
     const isSelected = poi.id === activePoiId;
-    const pinGroup = new THREE.Group();
-    pinGroup.position.set(poi.position[0], poi.position[1], poi.position[2]);
-    pinGroup.userData = { poi };
-
-    const coreColor = isSelected ? 0xd99b4e : 0x48b878;
-
-    // Glowing beacon sphere
-    const sphereGeo = new THREE.SphereGeometry(0.11, 20, 20);
-    const sphereMat = new THREE.MeshStandardMaterial({
-      color: coreColor,
-      emissive: coreColor,
-      emissiveIntensity: isSelected ? 0.85 : 0.45,
-      roughness: 0.25
-    });
-    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-    sphere.userData = { poi };
-    pinGroup.add(sphere);
-    interactables.push(sphere);
-
-    // Outer halo ring
-    const ringGeo = new THREE.RingGeometry(0.15, 0.19, 28);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xf6f4ef,
-      side: THREE.DoubleSide,
+    const { texture, aspect } = createLabelTexture(poi.name, isSelected);
+    const material = new THREE.SpriteMaterial({
+      map: texture,
       transparent: true,
-      opacity: isSelected ? 0.9 : 0.55
+      depthTest: false,
+      depthWrite: false,
+      sizeAttenuation: false,
+      toneMapped: false
     });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = -0.02;
-    pinGroup.add(ring);
-
-    // Vertical drop stem to furniture surface
-    const stemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.32, 8);
-    const stemMat = new THREE.MeshBasicMaterial({
-      color: coreColor,
-      transparent: true,
-      opacity: 0.65
-    });
-    const stem = new THREE.Mesh(stemGeo, stemMat);
-    stem.position.y = -0.18;
-    pinGroup.add(stem);
-
-    group.add(pinGroup);
+    const label = new THREE.Sprite(material);
+    label.center.set(0.5, 0); // tail tip sits on the anchor point
+    label.scale.set(LABEL_SCREEN_HEIGHT * aspect, LABEL_SCREEN_HEIGHT, 1);
+    label.position.set(poi.position[0], poi.position[1], poi.position[2]);
+    label.renderOrder = isSelected ? 1001 : 1000;
+    label.userData = { poi };
+    group.add(label);
+    interactables.push(label);
   }
 
   return { group, interactables };

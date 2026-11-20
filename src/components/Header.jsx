@@ -1,19 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  Compass,
-  Maximize2,
-  Minimize2,
-  Search,
-  ShieldCheck,
-  BookOpen,
-  Navigation,
-  Map,
-  X
-} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, Box, Map, Maximize2, Minimize2, Navigation, Search, X } from 'lucide-react';
+import { getFloor1Navigator } from '../floor/floor1.js';
+import { searchPois } from '../floor/search.js';
+
+const MAX_FLOOR_RESULTS = 5;
 
 /**
- * NAMMA SPACE — Spatial Computing Header Bar
+ * NAMMA SPACE — Top bar: brand + scene picker, one search for places in this scan and on the
+ * floor, and the global actions (floor map, guide, fullscreen).
  */
 export default function Header({
   scenes,
@@ -21,8 +15,6 @@ export default function Header({
   onSelectScene,
   isLoading,
   hasError,
-  showCollisionBounds,
-  onToggleCollisionBounds,
   isFullscreen,
   onToggleFullscreen,
   onOpenGuide,
@@ -31,86 +23,142 @@ export default function Header({
   onSelectPoi,
   onClearPoi
 }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchWrapRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const pois = activeScene?.pois || [];
-  const filteredPois = pois.filter((p) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
-      p.description.toLowerCase().includes(q)
-    );
-  });
+  const scenePois = activeScene?.pois || [];
+  const sceneResults = useMemo(
+    () => searchPois(scenePois, query).map((r) => ({ type: 'scene', poi: r.poi })),
+    [scenePois, query]
+  );
+  const floorResults = useMemo(() => {
+    if (!isOpen || !query.trim()) return [];
+    return getFloor1Navigator()
+      .search(query)
+      .slice(0, MAX_FLOOR_RESULTS)
+      .map((r) => ({ type: 'floor', poi: r.poi, distance: r.distance }));
+  }, [isOpen, query]);
+  const results = [...sceneResults, ...floorResults];
+
+  useEffect(() => setActiveIndex(0), [query]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
-        setIsSearchOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setIsOpen(false);
+    };
+    const handleSlash = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+        e.preventDefault();
+        inputRef.current?.focus();
       }
     };
     window.addEventListener('pointerdown', handleClickOutside);
-    return () => window.removeEventListener('pointerdown', handleClickOutside);
+    window.addEventListener('keydown', handleSlash);
+    return () => {
+      window.removeEventListener('pointerdown', handleClickOutside);
+      window.removeEventListener('keydown', handleSlash);
+    };
   }, []);
 
   useEffect(() => {
-    setSearchQuery('');
-    setIsSearchOpen(false);
+    setQuery('');
+    setIsOpen(false);
   }, [activeScene?.id]);
 
-  let statusClass = 'status-dot';
-  let statusText = activeScene?.navigationStatus === 'preview'
-    ? 'Uncalibrated Preview • Placeholder Bounds'
-    : activeScene?.isReconstructed
-      ? 'Calibrated Capture'
-      : 'Synthetic Fixture';
+  const choose = (result) => {
+    if (!result) return;
+    setIsOpen(false);
+    inputRef.current?.blur();
+    if (result.type === 'scene') onSelectPoi(result.poi, true);
+    else onOpenFloorMap(result.poi);
+  };
 
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(results.length - 1, i + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(0, i - 1));
+    } else if (e.key === 'Enter') {
+      choose(results[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  let statusClass = 'status-dot';
+  let statusText = activeScene?.isReconstructed ? 'Live scan' : 'Preview';
   if (isLoading) {
     statusClass = 'status-dot status-loading';
-    statusText = 'Loading Spatial Asset…';
+    statusText = 'Loading';
   } else if (hasError) {
     statusClass = 'status-dot status-error';
-    statusText = 'Asset Load Error';
-  } else if (activeScene?.mode === 'demo') {
+    statusText = 'Load error';
+  } else if (!activeScene?.isReconstructed) {
     statusClass = 'status-dot status-demo';
-    statusText = 'Baseline Geometry (Demo)';
   }
+
+  const renderResult = (result, index) => {
+    const { poi } = result;
+    const isSelected = result.type === 'scene' && activePoi?.id === poi.id;
+    return (
+      <button
+        key={`${result.type}-${poi.id}`}
+        type="button"
+        role="option"
+        aria-selected={index === activeIndex}
+        className={`search-result ${index === activeIndex ? 'is-active' : ''} ${isSelected ? 'is-selected' : ''}`}
+        onMouseEnter={() => setActiveIndex(index)}
+        onClick={() => choose(result)}
+      >
+        <span className={`search-result-icon ${result.type === 'floor' ? 'is-floor' : ''}`} aria-hidden="true">
+          {result.type === 'floor' ? <Map size={13} /> : <Navigation size={13} />}
+        </span>
+        <span className="search-result-main">
+          <span className="search-result-title">{poi.name}</span>
+          <span className="search-result-meta">{poi.category}</span>
+        </span>
+        <span className="search-result-hint">
+          {result.type === 'floor' ? `${Math.round(result.distance)} m` : 'Go'}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <header className="spatial-header" role="banner">
-      {/* Left Cluster: Brand + Scene Selector + Rendering Status */}
       <div className="header-cluster">
         <div className="brand-mark">
           <div className="brand-logo-box" aria-hidden="true">
-            <Box size={18} strokeWidth={2.2} />
+            <Box size={17} strokeWidth={2.2} />
           </div>
           <div className="brand-text">
             <span className="brand-title">NAMMA SPACE</span>
-            <span className="brand-tagline">Your space, reimagined.</span>
+            <span className="brand-tagline">Indoor digital twin</span>
           </div>
         </div>
 
-        <div className="scene-selector-wrap">
-          <label htmlFor="scene-mode-select" className="sr-only">
-            Select Spatial Scene
-          </label>
-          <select
-            id="scene-mode-select"
-            className="scene-select"
-            value={activeScene?.id || ''}
-            onChange={(e) => onSelectScene(e.target.value)}
-            aria-label="Active Spatial Environment"
-          >
-            {scenes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <label htmlFor="scene-select" className="sr-only">
+          Scene
+        </label>
+        <select
+          id="scene-select"
+          className="scene-select"
+          value={activeScene?.id || ''}
+          onChange={(e) => onSelectScene(e.target.value)}
+        >
+          {scenes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
 
         <div className="status-badge" role="status" aria-live="polite">
           <span className={statusClass} />
@@ -118,116 +166,87 @@ export default function Header({
         </div>
       </div>
 
-      {/* Center Cluster: Searchable Points of Interest & Obstacle-Aware Wayfinding */}
-      <div className="header-search-cluster" ref={searchWrapRef}>
+      <div className="header-search-cluster" ref={wrapRef}>
         <div className="search-input-wrap">
           <Search size={15} className="search-input-icon" />
           <input
+            ref={inputRef}
             type="text"
             className="search-input"
-            placeholder="Search rooms, furniture, or POIs for A* route…"
-            value={searchQuery}
-            onFocus={() => setIsSearchOpen(true)}
+            placeholder="Search places — stage, 503, lift…"
+            value={query}
+            onFocus={() => setIsOpen(true)}
             onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setIsSearchOpen(true);
+              setQuery(e.target.value);
+              setIsOpen(true);
             }}
-            aria-label="Search Points of Interest"
+            onKeyDown={onKeyDown}
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls="header-search-results"
+            aria-label="Search places in this scan and on the floor"
           />
-          {(searchQuery || activePoi) && (
+          {query || activePoi ? (
             <button
               type="button"
               className="search-clear-btn"
               onClick={() => {
-                setSearchQuery('');
+                setQuery('');
                 onClearPoi?.();
               }}
-              title="Clear destination route"
+              aria-label="Clear search and route"
             >
               <X size={12} />
             </button>
+          ) : (
+            <kbd className="keycap search-shortcut" aria-hidden="true">/</kbd>
           )}
         </div>
 
-        {isSearchOpen && pois.length > 0 && (
-          <div className="poi-dropdown" role="listbox" aria-label="Points of Interest">
-            <div className="poi-dropdown-header">
-              <span>Spatial Points of Interest ({filteredPois.length})</span>
-              <span>A* Obstacle Route</span>
-            </div>
-            {filteredPois.length === 0 ? (
-              <div style={{ padding: '10px', fontSize: '12.5px', color: 'var(--color-ivory-dim)' }}>
-                No matching rooms or furniture in current scene.
+        {isOpen && (sceneResults.length > 0 || query.trim()) && (
+          <div id="header-search-results" className="search-panel" role="listbox" aria-label="Places">
+            {sceneResults.length > 0 && (
+              <div className="search-group">
+                <div className="search-group-label">In this scan</div>
+                {sceneResults.map((r, i) => renderResult(r, i))}
               </div>
-            ) : (
-              filteredPois.map((poi) => {
-                const isSelected = activePoi?.id === poi.id;
-                return (
-                  <button
-                    key={poi.id}
-                    type="button"
-                    className={`poi-item-btn ${isSelected ? 'is-active' : ''}`}
-                    onClick={() => {
-                      onSelectPoi(poi, true);
-                      setIsSearchOpen(false);
-                    }}
-                  >
-                    <div className="poi-item-main">
-                      <span className="poi-item-title">{poi.name}</span>
-                      <span className="poi-item-meta">
-                        {poi.category} — {poi.description}
-                      </span>
-                    </div>
-                    <span className="poi-route-tag">
-                      <Navigation size={10} style={{ display: 'inline', marginRight: 4 }} />
-                      Route
-                    </span>
-                  </button>
-                );
-              })
             )}
+            {floorResults.length > 0 && (
+              <div className="search-group">
+                <div className="search-group-label">On the floor · opens the map</div>
+                {floorResults.map((r, i) => renderResult(r, sceneResults.length + i))}
+              </div>
+            )}
+            {results.length === 0 && <div className="search-empty">No places match “{query}”.</div>}
           </div>
         )}
       </div>
 
-      {/* Right Cluster: Utility & Diagnostics Controls */}
       <div className="header-cluster header-actions">
         <button
           type="button"
           className="icon-btn icon-btn-accent"
-          onClick={onOpenFloorMap}
-          title="Floor map: search any room and get a walking route"
+          onClick={() => onOpenFloorMap()}
+          title="Floor map and walking routes"
         >
           <Map size={15} />
-          <span>Floor Map</span>
+          <span>Floor map</span>
         </button>
-
         <button
           type="button"
-          className={`icon-btn ${showCollisionBounds ? 'is-active' : ''}`}
-          onClick={onToggleCollisionBounds}
-          title="Toggle AABB Collision & Walkable Boundary Wireframes"
-        >
-          <ShieldCheck size={15} />
-          <span>Colliders</span>
-        </button>
-
-        <button
-          type="button"
-          className="icon-btn"
+          className="icon-btn icon-btn-square"
           onClick={onOpenGuide}
-          title="Smartphone Capture SOP & Reconstruction Pipeline Guide"
+          title="Capture guide"
+          aria-label="Capture guide"
         >
           <BookOpen size={15} />
-          <span>Capture SOP</span>
         </button>
-
         <button
           type="button"
           className="icon-btn icon-btn-square"
           onClick={onToggleFullscreen}
-          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-          title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         >
           {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
         </button>

@@ -328,6 +328,15 @@ const SceneViewer = forwardRef(function SceneViewer(
           debugBoundsGroupRef.current = debugVisuals;
         }
 
+        // Splat scenes: wait for the renderer's first sorted frame (capped) before reporting success,
+        // so the UI never reveals an unsorted blur.
+        const firstFrameReady = result.rootGroup.userData.firstFrameReady;
+        if (firstFrameReady) {
+          callbacksRef.current.onLoadProgress?.({ percent: null, preparing: true });
+          await Promise.race([firstFrameReady, new Promise((resolve) => setTimeout(resolve, 6000))]);
+          if (cancelled) return;
+        }
+
         setSceneStatsVersion((version) => version + 1);
         callbacksRef.current.onLoadSuccess?.(result.stats);
       } catch (err) {

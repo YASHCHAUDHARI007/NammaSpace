@@ -398,8 +398,22 @@ async function loadSparkSplatScene(sceneConfig, onProgress, signal, renderer) {
   rootGroup.name = `SparkSplatScene_${sceneConfig.id}`;
   if (!sceneConfig.isReconstructed) rootGroup.add(buildReconstructionCalibrationStage(sceneConfig.roomBounds));
 
+  // Resolves once Spark has finished its first sort/LoD pass with the mesh in the scene, i.e. the
+  // first frame that shows the room rather than an unsorted blur.
+  // Spark raises `onDirty` once and then waits for the app to clear `dirty` (it expects on-demand
+  // rendering). We render every frame, so clear it ourselves and resolve once the first sort has
+  // produced visible splats (`activeSplats`), i.e. the first frame that shows the room.
+  let markFirstFrame;
+  let meshAdded = false;
+  rootGroup.userData.firstFrameReady = new Promise((resolve) => {
+    markFirstFrame = resolve;
+  });
   const spark = new SparkRenderer({
     renderer,
+    onDirty: () => {
+      spark.dirty = false;
+      if (meshAdded && spark.activeSplats > 0) markFirstFrame();
+    },
     // Skip splats smaller than ~1.5 px on screen: visually identical, noticeably cheaper on phones.
     lodRenderScale: sceneConfig.lodRenderScale ?? 1.5
   });
@@ -420,6 +434,8 @@ async function loadSparkSplatScene(sceneConfig, onProgress, signal, renderer) {
     await mesh.initialized;
     if (signal?.aborted) throw new DOMException('Scene load cancelled', 'AbortError');
     rootGroup.add(mesh);
+    meshAdded = true;
+    spark.dirty = false;
     // Spark replaces the source splats with a LoD tree (original leaves + merged parent splats);
     // each frame draws a per-device subset of it.
     const lodCount = mesh.packedSplats?.lodSplats?.numSplats || mesh.extSplats?.lodSplats?.numSplats || 0;

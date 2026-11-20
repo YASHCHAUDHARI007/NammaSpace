@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  MousePointerClick,
-  RotateCcw,
-  Maximize2,
-  Minimize2,
-  Gauge,
-  Unlock
-} from 'lucide-react';
+import { Footprints, LogOut, RotateCcw, ShieldCheck } from 'lucide-react';
 
 const SPEED_OPTIONS = [
   { label: 'Slow', value: 2.0 },
@@ -14,124 +7,90 @@ const SPEED_OPTIONS = [
   { label: 'Fast', value: 4.8 }
 ];
 
+const TOUCH_KEYS = [
+  { dir: 'forward', label: 'Move forward', glyph: '↑', area: 'up' },
+  { dir: 'left', label: 'Step left', glyph: '←', area: 'left' },
+  { dir: 'backward', label: 'Move back', glyph: '↓', area: 'down' },
+  { dir: 'right', label: 'Step right', glyph: '→', area: 'right' }
+];
+
 /**
- * NAMMA SPACE — Viewer Controls Dock & Mobile Touch Controller
+ * NAMMA SPACE — Viewer controls dock (desktop) and touch movement pad (phones).
  */
 export default function ViewerControls({
   isPointerLocked,
   onEngagePointerLock,
   onReleasePointerLock,
   onResetView,
+  showCollisionBounds,
+  onToggleCollisionBounds,
   moveSpeed,
   onChangeMoveSpeed,
-  isFullscreen,
-  onToggleFullscreen,
   onVirtualMove
 }) {
   return (
     <>
-      {/* Mobile Touch D-Pad (Visible on mobile viewports <= 640px) */}
-      <div className="mobile-touch-pad" aria-label="Touch Movement Controls">
-        <div />
-        <button
-          type="button"
-          className="touch-move-btn"
-          onPointerDown={() => onVirtualMove?.('forward', true)}
-          onPointerUp={() => onVirtualMove?.('forward', false)}
-          onPointerLeave={() => onVirtualMove?.('forward', false)}
-          aria-label="Move Forward"
-        >
-          W
-        </button>
-        <div />
-        <button
-          type="button"
-          className="touch-move-btn"
-          onPointerDown={() => onVirtualMove?.('left', true)}
-          onPointerUp={() => onVirtualMove?.('left', false)}
-          onPointerLeave={() => onVirtualMove?.('left', false)}
-          aria-label="Strafe Left"
-        >
-          A
-        </button>
-        <button
-          type="button"
-          className="touch-move-btn"
-          onPointerDown={() => onVirtualMove?.('backward', true)}
-          onPointerUp={() => onVirtualMove?.('backward', false)}
-          onPointerLeave={() => onVirtualMove?.('backward', false)}
-          aria-label="Move Backward"
-        >
-          S
-        </button>
-        <button
-          type="button"
-          className="touch-move-btn"
-          onPointerDown={() => onVirtualMove?.('right', true)}
-          onPointerUp={() => onVirtualMove?.('right', false)}
-          onPointerLeave={() => onVirtualMove?.('right', false)}
-          aria-label="Strafe Right"
-        >
-          D
-        </button>
+      <div className="mobile-touch-pad" aria-label="Touch movement controls">
+        {TOUCH_KEYS.map((k) => (
+          <button
+            key={k.dir}
+            type="button"
+            className={`touch-move-btn touch-${k.area}`}
+            onPointerDown={() => onVirtualMove?.(k.dir, true)}
+            onPointerUp={() => onVirtualMove?.(k.dir, false)}
+            onPointerLeave={() => onVirtualMove?.(k.dir, false)}
+            onPointerCancel={() => onVirtualMove?.(k.dir, false)}
+            aria-label={k.label}
+          >
+            {k.glyph}
+          </button>
+        ))}
       </div>
 
-      {/* Desktop & Tablet Controls Dock (Bottom Right) */}
-      <aside className="viewer-controls-dock" aria-label="Viewer Controls">
+      <aside className="viewer-controls-dock" aria-label="Viewer controls">
         <div className="controls-card">
           <div className="controls-row">
             {isPointerLocked ? (
-              <button
-                type="button"
-                className="controls-primary-btn is-locked-active"
-                onClick={onReleasePointerLock}
-              >
-                <Unlock size={14} />
-                <span>Mouse Look Active (ESC to exit)</span>
+              <button type="button" className="controls-primary-btn is-locked-active" onClick={onReleasePointerLock}>
+                <LogOut size={14} />
+                <span>Exit walk mode</span>
+                <kbd className="keycap keycap-inline">Esc</kbd>
               </button>
             ) : (
-              <button
-                type="button"
-                className="controls-primary-btn"
-                onClick={onEngagePointerLock}
-              >
-                <MousePointerClick size={15} />
-                <span>Lock Cursor (First-Person Look)</span>
+              <button type="button" className="controls-primary-btn" onClick={onEngagePointerLock}>
+                <Footprints size={15} />
+                <span>Walk mode</span>
               </button>
             )}
-
             <button
               type="button"
               className="icon-btn icon-btn-square"
               onClick={onResetView}
-              title="Reset Camera Position (Key: R)"
-              aria-label="Reset Camera Position"
+              title="Back to start (R)"
+              aria-label="Back to start position"
             >
               <RotateCcw size={15} />
             </button>
-
             <button
               type="button"
-              className="icon-btn icon-btn-square"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              className={`icon-btn icon-btn-square ${showCollisionBounds ? 'is-active' : ''}`}
+              onClick={onToggleCollisionBounds}
+              aria-pressed={showCollisionBounds}
+              title="Show walkable area and obstacles"
+              aria-label="Show walkable area and obstacles"
             >
-              {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              <ShieldCheck size={15} />
             </button>
           </div>
 
-          {/* Configurable Movement Speed */}
           <div className="speed-control-wrap">
-            <span className="speed-label">
-              <Gauge size={14} />
-              <span>Walk Speed</span>
-            </span>
-            <div className="speed-pills" role="group" aria-label="Walking Speed">
+            <span className="speed-label">Walking speed</span>
+            <div className="speed-pills" role="group" aria-label="Walking speed">
               {SPEED_OPTIONS.map((opt) => (
                 <button
                   key={opt.label}
                   type="button"
+                  aria-pressed={moveSpeed === opt.value}
                   className={`speed-pill ${moveSpeed === opt.value ? 'is-active' : ''}`}
                   onClick={() => onChangeMoveSpeed(opt.value)}
                 >
@@ -141,8 +100,7 @@ export default function ViewerControls({
             </div>
           </div>
 
-          {/* Compact Keyboard Hints Strip */}
-          <div className="keyhints-strip" aria-label="Keyboard Shortcuts">
+          <div className="keyhints-strip" aria-label="Keyboard shortcuts">
             <span className="keycap-group">
               <kbd className="keycap">W</kbd>
               <kbd className="keycap">A</kbd>
@@ -152,15 +110,11 @@ export default function ViewerControls({
             </span>
             <span className="keycap-group">
               <kbd className="keycap">Shift</kbd>
-              <span>Pace</span>
+              <span>Faster</span>
             </span>
             <span className="keycap-group">
-              <kbd className="keycap">R</kbd>
-              <span>Reset</span>
-            </span>
-            <span className="keycap-group">
-              <kbd className="keycap">ESC</kbd>
-              <span>Cursor</span>
+              <kbd className="keycap">E</kbd>
+              <span>Go to place</span>
             </span>
           </div>
         </div>

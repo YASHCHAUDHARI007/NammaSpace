@@ -19,10 +19,10 @@ export const PLAYER_RADIUS = 0.36; // meters horizontal collision cylinder radiu
 export const SCENES = {
   'nammaspace-classroom': {
     id: 'nammaspace-classroom',
-    name: 'NammaSpace Classroom — Gaussian Splat Scan',
-    shortLabel: 'Classroom Scan (.splat)',
+    name: 'Classroom',
+    shortLabel: 'Classroom',
     mode: 'splat',
-    sceneType: '3D Gaussian Splatting (.ksplat)',
+    sceneType: 'Gaussian splat',
     reconstructionStatus:
       'Reconstructed from on-site footage: COLMAP 4.2 poses (1,038 frames, 0.73 px reprojection) + gsplat MCMC training (40k steps, 2400 px, depth-regularised, anti-aliased, bilateral-grid exposure correction)',
     isReconstructed: true,
@@ -31,7 +31,7 @@ export const SCENES = {
     sphericalHarmonicsDegree: 1,
     dimensionsLabel: '8.2m × 13.7m × 2.85m',
     description:
-      'Tiered classroom with a raised stage and projector screen at the front, two desk blocks split by a centre aisle, and the BUILD mural above the stepped seating at the back. Captured with 9 handheld 4K clips and 46 stills.',
+      'Tiered classroom with a raised stage and projector screen, two desk blocks split by a centre aisle, and stepped seating under the BUILD mural.',
     calibration: {
       captureSource:
         'nammaspace-videos&photos: C5304–C5312.MP4 (4K, sampled at 2 fps → 553 frames) + DSC01816–DSC01861.JPG (46 stills)',

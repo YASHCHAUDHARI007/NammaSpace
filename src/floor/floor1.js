@@ -9,6 +9,7 @@
  */
 import { FLOOR_1_SKETCH } from './floor1Sketch.js';
 import { buildFloorModel } from './floorPlan.js';
+import { FloorNavigator } from './floorNavigator.js';
 
 export const FLOOR_1_ANNOTATIONS = {
   name: 'Namma Space — Floor 1',
@@ -105,3 +106,7 @@ export const FLOOR_1_ANNOTATIONS = {
 };
 
 export const FLOOR_1 = buildFloorModel(FLOOR_1_SKETCH, FLOOR_1_ANNOTATIONS);
+
+let floor1Navigator = null;
+/** Shared navigator (grid + search index) built on first use and reused by every UI surface. */
+export const getFloor1Navigator = () => (floor1Navigator ??= new FloorNavigator(FLOOR_1, FLOOR_1_ANNOTATIONS));

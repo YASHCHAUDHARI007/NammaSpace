@@ -12,11 +12,7 @@ import {
   Search,
   X
 } from 'lucide-react';
-import { FLOOR_1, FLOOR_1_ANNOTATIONS } from '../floor/floor1.js';
-import { FloorNavigator as Navigator } from '../floor/floorNavigator.js';
-
-let sharedNavigator = null;
-const getNavigator = () => (sharedNavigator ??= new Navigator(FLOOR_1, FLOOR_1_ANNOTATIONS));
+import { FLOOR_1, getFloor1Navigator } from '../floor/floor1.js';
 
 const formatEta = (s) => (s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`);
 
@@ -180,8 +176,8 @@ function FloorMapSvg({ navigator, view, start, route, destination, hoverStep, on
   );
 }
 
-export default function FloorNavigator({ open, onClose }) {
-  const navigator = useMemo(() => (open || sharedNavigator ? getNavigator() : null), [open]);
+export default function FloorNavigator({ open, onClose, initialDestination = null }) {
+  const navigator = useMemo(() => (open ? getFloor1Navigator() : null), [open]);
   const [query, setQuery] = useState('');
   const [start, setStart] = useState(null);
   const [startLabel, setStartLabel] = useState('Lift Lobby');
@@ -197,6 +193,14 @@ export default function FloorNavigator({ open, onClose }) {
   useEffect(() => {
     if (navigator && !start) setStart(navigator.defaultStart);
   }, [navigator, start]);
+
+  // Opened from the header search with a place already chosen.
+  useEffect(() => {
+    if (open && initialDestination) {
+      setDestination(initialDestination);
+      setQuery('');
+    }
+  }, [open, initialDestination]);
 
   useLayoutEffect(() => {
     if (!open || !mapWrapRef.current) return undefined;

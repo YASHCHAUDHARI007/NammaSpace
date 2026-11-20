@@ -1,93 +1,79 @@
 import React from 'react';
-import { Compass, Map, Sparkles, ShieldAlert } from 'lucide-react';
+import { Compass, Loader2, Map } from 'lucide-react';
+
+const CONTROLS = [
+  { keys: 'W A S D', label: 'Walk around' },
+  { keys: 'Mouse / drag', label: 'Look around' },
+  { keys: 'E / click', label: 'Go to a labelled place' }
+];
 
 /**
- * NAMMA SPACE — Welcome Overlay ("Step inside.")
+ * NAMMA SPACE — Welcome dialog. The primary action stays disabled (with live progress) until the
+ * scan is on screen, so "Start exploring" never drops the user into a blank viewport.
  */
-export default function WelcomeOverlay({
-  sceneConfig,
-  onStartExplore,
-  onOpenFloorMap
-}) {
+export default function WelcomeOverlay({ sceneConfig, isReady, progress, onStartExplore, onOpenFloorMap }) {
+  const percent = progress?.percent;
   if (!sceneConfig) return null;
 
   return (
     <div className="welcome-backdrop" role="dialog" aria-modal="true" aria-labelledby="welcome-heading">
       <div className="welcome-dialog">
         <div className="welcome-hero-banner">
-          <div className="welcome-eyebrow">
-            <Sparkles size={12} />
-            <span>IIT Bombay Techfest 2026–27 • Indoor Digital Twin</span>
-          </div>
+          <span className="welcome-eyebrow">IIT Bombay Techfest 2026–27 · Namma Space</span>
           <h1 id="welcome-heading" className="welcome-title">
             Step inside.
           </h1>
           <p className="welcome-subtitle">
-            Explore smartphone-captured indoor spaces and architectural baselines in real time with
-            first-person collision physics and obstacle-aware pathfinding.
+            Walk through photoreal scans of real rooms, search any place on the floor and follow a route
+            straight to it.
           </p>
         </div>
 
         <div className="welcome-body">
-          {/* Active Scene Summary & Honest Provenance Callout */}
           <div className="welcome-scene-summary">
             <div className="welcome-scene-row">
               <span className="welcome-scene-name">{sceneConfig.name}</span>
-              <span className="welcome-scene-badge">{sceneConfig.mode.toUpperCase()} MODE</span>
+              <span className="welcome-scene-badge">{sceneConfig.sceneType}</span>
             </div>
             <p className="welcome-scene-note">{sceneConfig.description}</p>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                marginTop: '4px',
-                fontSize: '11.5px',
-                color: sceneConfig.isReconstructed ? '#1b4d32' : '#7a4f13',
-                fontWeight: 600
-              }}
-            >
-              <ShieldAlert size={13} />
-              <span>Provenance: {sceneConfig.reconstructionStatus}</span>
-            </div>
           </div>
 
-          {/* Brief Control Instructions */}
-          <div className="welcome-controls-grid" aria-label="Viewer Control Instructions">
-            <div className="welcome-control-tile">
-              <span className="welcome-tile-keys">W A S D / Arrows</span>
-              <span className="welcome-tile-label">Walk &amp; strafe with wall/obstacle collision</span>
-            </div>
-            <div className="welcome-control-tile">
-              <span className="welcome-tile-keys">Mouse / Drag</span>
-              <span className="welcome-tile-label">360° first-person look direction</span>
-            </div>
-            <div className="welcome-control-tile">
-              <span className="welcome-tile-keys">ESC / R / E</span>
-              <span className="welcome-tile-label">Release cursor, reset view, or route to POI</span>
-            </div>
-          </div>
+          <ul className="welcome-controls-grid" aria-label="Controls">
+            {CONTROLS.map((c) => (
+              <li key={c.keys} className="welcome-control-tile">
+                <span className="welcome-tile-keys">{c.keys}</span>
+                <span className="welcome-tile-label">{c.label}</span>
+              </li>
+            ))}
+          </ul>
 
-          {/* Primary & Secondary Actions */}
           <div className="welcome-actions">
             <button
               type="button"
               className="btn-explore-primary"
               onClick={onStartExplore}
-              autoFocus
+              disabled={!isReady}
+              autoFocus={isReady}
             >
-              <Compass size={18} />
-              <span>Explore the space</span>
+              {isReady ? (
+                <>
+                  <Compass size={18} />
+                  <span>Start exploring</span>
+                </>
+              ) : (
+                <>
+                  <Loader2 size={17} className="spin" />
+                  <span>
+                    {progress?.preparing
+                      ? 'Preparing view…'
+                      : `Loading scan${typeof percent === 'number' ? ` · ${Math.round(percent)}%` : '…'}`}
+                  </span>
+                </>
+              )}
             </button>
-
-            <button
-              type="button"
-              className="btn-secondary-light"
-              onClick={onOpenFloorMap}
-              title="Search any room on the floor and get a walking route"
-            >
+            <button type="button" className="btn-secondary-light" onClick={onOpenFloorMap}>
               <Map size={16} />
-              <span>Floor map &amp; routes</span>
+              <span>Floor map</span>
             </button>
           </div>
         </div>

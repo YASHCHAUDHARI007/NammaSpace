@@ -2,21 +2,14 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import {
-  Layers,
-  Upload,
-  Navigation,
-  X,
-  Camera,
-  Cpu,
-  FileCode
-} from 'lucide-react';
+import { X, Camera, Cpu, FileCode } from 'lucide-react';
 import Header from './components/Header.jsx';
 import WelcomeOverlay from './components/WelcomeOverlay.jsx';
 import ViewerControls from './components/ViewerControls.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ErrorState from './components/ErrorState.jsx';
 import FloorNavigator from './components/FloorNavigator.jsx';
+import SceneInfoCard from './components/SceneInfoCard.jsx';
 import {
   SCENES,
   DEFAULT_SCENE_ID,
@@ -37,12 +30,16 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [showGuideDrawer, setShowGuideDrawer] = useState(false);
   const [showFloorMap, setShowFloorMap] = useState(false);
+  const [floorDestination, setFloorDestination] = useState(null);
 
   // Loading & Error lifecycle state
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [sceneStats, setSceneStats] = useState(null);
+  // The canvas fades in only after the viewer reports its first finished frame, so the unsorted
+  // first splat frame is never shown; the loading card stays up until then.
+  const [isSceneRevealed, setIsSceneRevealed] = useState(false);
 
   // Viewer interaction state
   const [isPointerLocked, setIsPointerLocked] = useState(false);
@@ -70,6 +67,22 @@ export default function App() {
 
   useEffect(() => () => {
     for (const url of importedUrlsRef.current) URL.revokeObjectURL(url);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || loadError || !sceneStats) {
+      setIsSceneRevealed(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setIsSceneRevealed(true), 120);
+    return () => clearTimeout(timer);
+  }, [isLoading, loadError, sceneStats]);
+
+  const openFloorMap = useCallback((destination = null) => {
+    viewerRef.current?.unlockPointer();
+    setShowWelcome(false);
+    setFloorDestination(destination);
+    setShowFloorMap(true);
   }, []);
 
   const handleToggleFullscreen = useCallback(() => {
@@ -163,7 +176,7 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isSceneRevealed ? 'is-scene-revealed' : ''}`}>
       {/* Hidden File Input for Local .glb / .splat Imports */}
       <input
         ref={fileInputRef}
@@ -180,19 +193,13 @@ export default function App() {
         onSelectScene={handleSelectScene}
         isLoading={isLoading}
         hasError={Boolean(loadError)}
-        showCollisionBounds={showCollisionBounds}
-        onToggleCollisionBounds={() => setShowCollisionBounds((v) => !v)}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
         onOpenGuide={() => {
           viewerRef.current?.unlockPointer();
           setShowGuideDrawer(true);
         }}
-        onOpenFloorMap={() => {
-          viewerRef.current?.unlockPointer();
-          setShowWelcome(false);
-          setShowFloorMap(true);
-        }}
+        onOpenFloorMap={openFloorMap}
         activePoi={activePoi}
         onSelectPoi={handleSelectPoi}
         onClearPoi={handleClearPoi}
@@ -228,97 +235,14 @@ export default function App() {
         onTelemetryUpdate={setCameraCoords}
       />
 
-      {/* E. Scene Information & Telemetry Card (Bottom Left) */}
-      <section className="scene-info-card" aria-label="Scene Information and Telemetry">
-        <div>
-          <div className="scene-info-top">
-            <span
-              className={`scene-type-chip ${activeScene.mode === 'demo' ? 'chip-demo' : ''}`}
-            >
-              <Layers size={11} />
-              <span>{activeScene.sceneType}</span>
-            </span>
-
-            <button
-              type="button"
-              className="upload-trigger-btn"
-              onClick={() => fileInputRef.current?.click()}
-              title="Import your own reconstructed .glb or .splat file"
-            >
-              <Upload size={11} />
-              <span>Import Asset</span>
-            </button>
-          </div>
-
-          <h2 className="scene-info-name">{activeScene.name}</h2>
-        </div>
-
-        {/* Honest Reconstruction Provenance Banner */}
-        <div className="provenance-banner">
-          <span>
-            <strong>Status:</strong> {activeScene.reconstructionStatus}
-            {activeScene.navigationStatus === 'preview' && (
-              <><br /><strong>Navigation:</strong> Placeholder room bounds; no measured collision proxies or POIs.</>
-            )}
-          </span>
-        </div>
-
-        {/* Active A* Obstacle-Aware Route Banner (when POI is selected) */}
-        {activeRoute && activeRoute.poi && (
-          <div className="route-active-bar">
-            <div className="route-active-meta">
-              <span className="route-active-title">
-                <Navigation size={11} style={{ display: 'inline', marginRight: 4 }} />
-                A* Route: {activeRoute.poi.name}
-              </span>
-              <span className="route-active-sub">
-                Walkable path: {activeRoute.distanceMeters}m ({activeRoute.points.length} waypoints)
-              </span>
-            </div>
-            <button
-              type="button"
-              className="search-clear-btn"
-              onClick={handleClearPoi}
-              aria-label="Clear active route"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        )}
-
-        {/* Real-Time Spatial Telemetry Grid */}
-        <div className="scene-telemetry-grid">
-          <div className="telemetry-cell">
-            <span className="telemetry-label">
-              {sceneStats?.mode === 'splat' ? 'Gaussian Splats' : 'Mesh Geometry'}
-            </span>
-            <span className="telemetry-val">
-              {sceneStats?.mode === 'splat'
-                ? `${(sceneStats.splatCount || 0).toLocaleString()} splats`
-                : `${(sceneStats?.triangleCount || 0).toLocaleString()} tris`}
-            </span>
-          </div>
-
-          <div className="telemetry-cell">
-            <span className="telemetry-label">Collision Volumes</span>
-            <span className="telemetry-val">
-              {sceneStats?.collisionCount ?? activeScene.colliders?.length ?? 0} AABBs + Walls
-            </span>
-          </div>
-
-          <div className="telemetry-cell">
-            <span className="telemetry-label">Standing Eye Pos</span>
-            <span className="telemetry-val">
-              {cameraCoords.x}, {cameraCoords.y}, {cameraCoords.z}m
-            </span>
-          </div>
-
-          <div className="telemetry-cell">
-            <span className="telemetry-label">Points of Interest</span>
-            <span className="telemetry-val">{activeScene.pois?.length || 0} Anchors</span>
-          </div>
-        </div>
-      </section>
+      <SceneInfoCard
+        scene={activeScene}
+        stats={sceneStats}
+        cameraCoords={cameraCoords}
+        activeRoute={activeRoute}
+        onClearRoute={handleClearPoi}
+        onImport={() => fileInputRef.current?.click()}
+      />
 
       {/* D. Viewer Controls Dock (Bottom Right) */}
       <ViewerControls
@@ -326,10 +250,10 @@ export default function App() {
         onEngagePointerLock={() => viewerRef.current?.lockPointer()}
         onReleasePointerLock={() => viewerRef.current?.unlockPointer()}
         onResetView={() => viewerRef.current?.resetCameraView()}
+        showCollisionBounds={showCollisionBounds}
+        onToggleCollisionBounds={() => setShowCollisionBounds((v) => !v)}
         moveSpeed={moveSpeed}
         onChangeMoveSpeed={setMoveSpeed}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={handleToggleFullscreen}
         onVirtualMove={(dir, active) => viewerRef.current?.setVirtualKey(dir, active)}
       />
 
@@ -338,15 +262,16 @@ export default function App() {
         <WelcomeOverlay
           sceneConfig={activeScene}
           onStartExplore={handleStartExplore}
-          onOpenFloorMap={() => {
-            setShowWelcome(false);
-            setShowFloorMap(true);
-          }}
+          isReady={isSceneRevealed}
+          progress={loadProgress}
+          onOpenFloorMap={() => openFloorMap()}
         />
       )}
 
       {/* Loading Overlay */}
-      {isLoading && <LoadingState sceneConfig={activeScene} progress={loadProgress} />}
+      {!loadError && !isSceneRevealed && !showWelcome && (
+        <LoadingState sceneConfig={activeScene} progress={loadProgress} isPreparing={!isLoading} />
+      )}
 
       {/* Error & Fallback Overlay */}
       {loadError && (
@@ -368,7 +293,11 @@ export default function App() {
         />
       )}
 
-      <FloorNavigator open={showFloorMap} onClose={() => setShowFloorMap(false)} />
+      <FloorNavigator
+        open={showFloorMap}
+        initialDestination={floorDestination}
+        onClose={() => setShowFloorMap(false)}
+      />
 
       {/* Smartphone Capture SOP & Reconstruction Pipeline Drawer */}
       {showGuideDrawer && (
