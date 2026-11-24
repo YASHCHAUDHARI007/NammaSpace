@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { DEFAULT_STANDING_HEIGHT } from '../config/scenes.js';
 
+// Look range the capture covers; steeper views of near furniture show splat ghosting.
+const MAX_PITCH_UP = THREE.MathUtils.degToRad(45);
+const MAX_PITCH_DOWN = THREE.MathUtils.degToRad(35);
+
 /**
  * NAMMA SPACE — First-Person Spatial Controller
  *
@@ -22,8 +26,8 @@ export class FirstPersonController {
     this.onCollision = callbacks.onCollision || (() => { });
 
     this.pointerLock = new PointerLockControls(this.camera, this.domElement);
-    this.pointerLock.minPolarAngle = Math.PI * 0.12; // prevent flipping overhead
-    this.pointerLock.maxPolarAngle = Math.PI * 0.88; // prevent flipping underfoot
+    this.pointerLock.minPolarAngle = Math.PI / 2 - MAX_PITCH_UP;
+    this.pointerLock.maxPolarAngle = Math.PI / 2 + MAX_PITCH_DOWN;
 
     this.moveSpeed = 3.2; // meters per second (configurable)
     this.standingHeight = DEFAULT_STANDING_HEIGHT;
@@ -162,8 +166,7 @@ export class FirstPersonController {
       this.euler.setFromQuaternion(this.camera.quaternion);
       this.euler.y -= dx * sensitivity;
       this.euler.x -= dy * sensitivity;
-      const maxPitch = Math.PI * 0.38;
-      this.euler.x = Math.max(-maxPitch, Math.min(maxPitch, this.euler.x));
+      this.euler.x = THREE.MathUtils.clamp(this.euler.x, -MAX_PITCH_DOWN, MAX_PITCH_UP);
       this.camera.quaternion.setFromEuler(this.euler);
     };
 

@@ -47,7 +47,7 @@ export default function App() {
   const [moveSpeed, setMoveSpeed] = useState(3.2);
   const [showCollisionBounds, setShowCollisionBounds] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [cameraCoords, setCameraCoords] = useState({ x: '0.00', y: '1.68', z: '3.10' });
+  const [cameraCoords, setCameraCoords] = useState({ x: '0.00', y: DEFAULT_STANDING_HEIGHT.toFixed(2), z: '3.10' });
 
   // Round 2 Extension: Active POI & Obstacle-Aware A* Route
   const [activePoi, setActivePoi] = useState(null);

@@ -16,7 +16,7 @@
 - **First-Person Spatial Controller (`src/viewer/controls.js`):**
   - `PointerLockControls` mouse look + drag-to-look fallback and mobile touch D-pad.
   - Normalized horizontal movement vector so diagonal `W+A` / `W+D` movement is never faster than straight movement.
-  - Standing eye-height constraint (`1.68m`) and configurable walking speed (`Slow 2.0m/s`, `Normal 3.2m/s`, `Fast 4.8m/s`, plus `Shift` pace boost).
+  - Standing eye-height constraint (`1.5m`, the capture height) with look limited to 35° down / 45° up and configurable walking speed (`Slow 2.0m/s`, `Normal 3.2m/s`, `Fast 4.8m/s`, plus `Shift` pace boost).
   - Automatic key release on `ESC`, pointer-lock exit, window blur, or tab switch.
 - **Deterministic Collision & Obstacle-Aware A* Wayfinding (`src/viewer/collision.js`):**
   - Circle-vs-AABB horizontal collision resolution with smooth wall and furniture sliding.

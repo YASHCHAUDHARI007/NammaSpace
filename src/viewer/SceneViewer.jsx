@@ -14,6 +14,7 @@ import {
 } from './createScene.js';
 import { CollisionSystem } from './collision.js';
 import { FirstPersonController } from './controls.js';
+import { DEFAULT_STANDING_HEIGHT } from '../config/scenes.js';
 import { loadSpatialScene, disposeSpatialScene } from './sceneLoader.js';
 
 /**
@@ -311,7 +312,7 @@ const SceneViewer = forwardRef(function SceneViewer(
 
         // Position camera at scene spawn point
         const spawn = sceneConfig.spawn || {
-          position: [0, 1.68, 3.0],
+          position: [0, DEFAULT_STANDING_HEIGHT, 3.0],
           yaw: 0,
           pitch: -0.04
         };

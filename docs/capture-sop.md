@@ -77,6 +77,6 @@ Follow a structured **3-Loop Capture Trajectory**:
 
 Before importing the asset into Namma Space (`public/models/` or `public/scenes/`):
 - [ ] **Coordinate Orientation:** Floor lies on the horizontal `XZ` plane (`Y = 0`), with `+Y` pointing up.
-- [ ] **Metric Scale:** `1.0` scene unit equals `1.0 meter` (standing eye height `1.68m` feels natural).
+- [ ] **Metric Scale:** `1.0` scene unit equals `1.0 meter` (the viewer eye height is `1.5m`; film the main loop at that height).
 - [ ] **File Size Budget:** Prefer an uncompressed `.glb` for offline checks, or Draco compression when the external decoder is reachable (`< 25 MB` is a starting target, not a validated device limit). Meshopt is not configured in this viewer. Prune exterior floaters from `.splat` (`< 35 MB` is likewise a starting target).
 - [ ] **Collision Proxy Defined:** Outer room `roomBounds` (`minX`, `maxX`, `minZ`, `maxZ`) and major furniture `colliders` are recorded in `src/config/scenes.js`.

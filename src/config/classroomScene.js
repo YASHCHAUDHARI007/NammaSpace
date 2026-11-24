@@ -2,7 +2,8 @@
  * NAMMA SPACE — Room 504 classroom: the real Gaussian-splat reconstruction.
  * Kept in its own module so the floor model can place it without importing the whole registry.
  */
-export const DEFAULT_STANDING_HEIGHT = 1.68; // meters (average human eye level)
+// Matches the capture height (Namma Shoot Plan pass A1); a higher eye shows splat ghosting on near furniture.
+export const DEFAULT_STANDING_HEIGHT = 1.5; // meters
 export const PLAYER_RADIUS = 0.36; // meters horizontal collision cylinder radius
 
 export const CLASSROOM_SCENE = {
