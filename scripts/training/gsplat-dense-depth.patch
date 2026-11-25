@@ -1,0 +1,202 @@
+Dense depth supervision for gsplat's simple_trainer.py
+(NammaSpace classroom ghosting, docs/ghosting-research-2026-11-24.md, section 2, step 3)
+
+Base: nerfstudio-project/gsplat main at 512d366 (version 1.6.0, 19 Sep 2026).
+
+    cd gsplat && git apply /path/to/gsplat-dense-depth.patch
+
+On an older checkout, try `git apply -3`, or apply by hand. The change is two
+Config fields, one Dataset argument, a depth loader and one loss block.
+
+New options
+    --depth_dir DIR            directory of <image name without extension>.npy
+    --dense_depth_lambda 0.01  weight of the dense depth loss
+
+Depth files (scripts/training/lidar-depth-for-gsplat.py render writes these)
+- Camera z-depth (not distance along the ray) in COLMAP model units, float16 or float32.
+- Rendered with the original COLMAP camera, distortion included, at any resolution
+  with the image's aspect ratio. The loader resizes, undistorts and crops each map
+  exactly like its image, always with nearest neighbour.
+- 0 where there is no measurement: no mesh hit, or LiDAR never saw the space in front
+  of the surface as empty.
+- Same relative path as the image: image C1/frame_0001.jpg -> DIR/C1/frame_0001.npy.
+- The loader applies the world-normalisation scale itself, so --normalize_world_space
+  on or off both work.
+
+Loss: L1 on disparity over measured pixels, times scene_scale: the same form as
+gsplat's sparse --depth_loss. It is weighted by exp(-|image gradient|), as in
+DN-Splatter's EdgeAwareLogL1, so low-resolution sensor depth counts less at object
+edges. A frame with no measured pixel adds zero. TensorBoard: train/dense_depthloss.
+
+Example (the mcmc preset already sets opacity_reg and scale_reg to 0.01):
+    python examples/simple_trainer.py mcmc --data_dir DATA --data_factor N \
+        --result_dir RESULTS --depth_dir DATA/depths --dense_depth_lambda 0.01
+Start at 0.01, then try 0.05 and 0.2. Pick by PSNR/LPIPS on the held-out route clip.
+
+Checked on CPU only, with scripts/training/test-gsplat-dense-depth.py: the depth
+warp matches the image warp for distorted and undistorted cameras, and the loss is
+zero at a match, ignores unmeasured pixels and never returns NaN. Not yet run on a
+GPU or a real scene. Difix3D's trainer is a separate copy of simple_trainer.py and
+does not get this change.
+
+diff --git a/examples/datasets/colmap.py b/examples/datasets/colmap.py
+index 5e7e089..718fbfa 100644
+--- a/examples/datasets/colmap.py
++++ b/examples/datasets/colmap.py
+@@ -450,11 +450,13 @@ class Dataset:
+         split: str = "train",
+         patch_size: Optional[int] = None,
+         load_depths: bool = False,
++        depth_dir: Optional[str] = None,
+     ):
+         self.parser = parser
+         self.split = split
+         self.patch_size = patch_size
+         self.load_depths = load_depths
++        self.depth_dir = depth_dir
+         indices = np.arange(len(self.parser.image_names))
+         if split == "train":
+             self.indices = indices[indices % self.parser.test_every != 0]
+@@ -482,6 +484,34 @@ class Dataset:
+             image = image[y : y + h, x : x + w]
+         return image
+ 
++    def _load_dense_depth(self, item: int, height: int, width: int) -> np.ndarray:
++        """Load a dense depth map and warp it exactly like the image.
++
++        The file is `<depth_dir>/<image name without extension>.npy`: camera z-depth
++        in COLMAP model units, any resolution with the image's aspect ratio, 0 where
++        there is no measurement.
++        """
++        index = self.indices[item]
++        stem = os.path.splitext(self.parser.image_names[index])[0]
++        depth = np.load(os.path.join(self.depth_dir, stem + ".npy")).astype(np.float32)
++        camera_id = self.parser.camera_ids[index]
++        # Nearest-neighbour throughout, so depths never blend across object edges.
++        if len(self.parser.params_dict[camera_id]) > 0:
++            mapx, mapy = (
++                self.parser.mapx_dict[camera_id],
++                self.parser.mapy_dict[camera_id],
++            )
++            size = (mapx.shape[1], mapx.shape[0])
++            depth = cv2.resize(depth, size, interpolation=cv2.INTER_NEAREST)
++            depth = cv2.remap(depth, mapx, mapy, cv2.INTER_NEAREST)
++            x, y, w, h = self.parser.roi_undist_dict[camera_id]
++            depth = depth[y : y + h, x : x + w]
++        else:
++            depth = cv2.resize(depth, (width, height), interpolation=cv2.INTER_NEAREST)
++        assert depth.shape == (height, width), (depth.shape, (height, width))
++        # The world normalization is a uniform scale, so z-depth scales with it.
++        return depth * np.linalg.norm(self.parser.transform[:3, 0])
++
+     def preload_images(self, num_workers: int = 4) -> None:
+         """Decode and undistort every image once, into host memory.
+ 
+@@ -504,6 +534,8 @@ class Dataset:
+         K = self.parser.Ks_dict[camera_id].copy()  # undistorted K
+         camtoworlds = self.parser.camtoworlds[index]
+         mask = self.parser.mask_dict[camera_id]
++        if self.depth_dir is not None:
++            dense_depth = self._load_dense_depth(item, image.shape[0], image.shape[1])
+ 
+         if self.patch_size is not None:
+             # Random crop.
+@@ -511,6 +543,8 @@ class Dataset:
+             x = np.random.randint(0, max(w - self.patch_size, 1))
+             y = np.random.randint(0, max(h - self.patch_size, 1))
+             image = image[y : y + self.patch_size, x : x + self.patch_size]
++            if self.depth_dir is not None:
++                dense_depth = dense_depth[y : y + self.patch_size, x : x + self.patch_size]
+             K[0, 2] -= x
+             K[1, 2] -= y
+ 
+@@ -525,6 +559,8 @@ class Dataset:
+         }
+         if mask is not None:
+             data["mask"] = torch.from_numpy(mask).bool()
++        if self.depth_dir is not None:
++            data["dense_depth"] = torch.from_numpy(dense_depth)  # [H, W]
+ 
+         # Add exposure if available for this image
+         exposure = self.parser.exposure_values[index]
+diff --git a/examples/simple_trainer.py b/examples/simple_trainer.py
+index 46fb2ff..ba4f1e8 100644
+--- a/examples/simple_trainer.py
++++ b/examples/simple_trainer.py
+@@ -252,6 +252,11 @@ class Config:
+     depth_loss: bool = False
+     # Weight for depth loss
+     depth_lambda: float = 1e-2
++    # Dense depth supervision (e.g. depth rendered from a LiDAR mesh): a directory of
++    # <image name without extension>.npy, camera z-depth in COLMAP units, 0 = no depth.
++    depth_dir: Optional[str] = None
++    # Weight for the dense depth loss (L1 on disparity, same form as depth_loss)
++    dense_depth_lambda: float = 1e-2
+ 
+     # Dump information to tensorboard every this steps
+     tb_every: int = 100
+@@ -459,6 +464,7 @@ class Runner:
+                 split="train",
+                 patch_size=cfg.patch_size,
+                 load_depths=cfg.depth_loss,
++                depth_dir=cfg.depth_dir,
+             )
+             self.valset = Dataset(self.parser, split="val")
+         self.scene_scale = self.parser.scene_scale * 1.1 * cfg.global_scale
+@@ -903,6 +909,8 @@ class Runner:
+             if cfg.depth_loss:
+                 points = data["points"].to(device)  # [1, M, 2]
+                 depths_gt = data["depths"].to(device)  # [1, M]
++            if cfg.depth_dir is not None:
++                dense_depths_gt = data["dense_depth"].to(device)  # [1, H, W]
+ 
+             height, width = pixels.shape[1:3]
+ 
+@@ -926,7 +934,9 @@ class Runner:
+                 near_plane=cfg.near_plane,
+                 far_plane=cfg.far_plane,
+                 image_ids=image_ids,
+-                render_mode="RGB+ED" if cfg.depth_loss else "RGB",
++                render_mode=(
++                    "RGB+ED" if cfg.depth_loss or cfg.depth_dir is not None else "RGB"
++                ),
+                 masks=masks,
+                 frame_idcs=image_ids,
+                 camera_idcs=data["camera_idx"].to(device),
+@@ -969,6 +979,25 @@ class Runner:
+                 colors_ssim.permute(0, 3, 1, 2), pixels_ssim.permute(0, 3, 1, 2)
+             )
+             loss = torch.lerp(l1loss, ssimloss, cfg.ssim_lambda)
++            if cfg.depth_dir is not None:
++                # Dense depth: L1 on disparity over measured pixels, down-weighted at
++                # image edges where low-res sensor depth is least reliable (as in
++                # DN-Splatter's EdgeAwareLogL1).
++                pred_depths = depths[..., 0]  # [1, H, W]
++                valid = (dense_depths_gt > 0) & (pred_depths > 0)
++                gray = pixels.mean(dim=-1)  # [1, H, W]
++                edge_x = F.pad((gray[:, :, 1:] - gray[:, :, :-1]).abs(), (0, 1))
++                edge_y = F.pad((gray[:, 1:, :] - gray[:, :-1, :]).abs(), (0, 0, 0, 1))
++                disp_err = (
++                    1.0 / pred_depths.clamp_min(1e-6)
++                    - 1.0 / dense_depths_gt.clamp_min(1e-6)
++                ).abs()
++                weighted = torch.exp(-(edge_x + edge_y)) * disp_err * valid
++                # Frames with no measured pixel add zero instead of NaN.
++                dense_depthloss = (
++                    weighted.sum() / valid.sum().clamp_min(1) * self.scene_scale
++                )
++                loss += dense_depthloss * cfg.dense_depth_lambda
+             if cfg.depth_loss:
+                 # query depths from depth map
+                 points = torch.stack(
+@@ -1034,6 +1063,10 @@ class Runner:
+                 self.writer.add_scalar("train/mem", mem, step)
+                 if cfg.depth_loss:
+                     self.writer.add_scalar("train/depthloss", depthloss.item(), step)
++                if cfg.depth_dir is not None:
++                    self.writer.add_scalar(
++                        "train/dense_depthloss", dense_depthloss.item(), step
++                    )
+                 if cfg.post_processing is not None:
+                     self.writer.add_scalar(
+                         "train/post_processing_reg_loss",
